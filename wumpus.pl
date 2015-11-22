@@ -40,6 +40,40 @@
 % Versin pit3, by Beco
 %
 % World Models: fig62, random, pit3
+%
+% fig62:
+%   gold: [2,3]
+%   pits: [3,1], [3,3], [3,4]
+%   wumpus: [1,3], fixed location
+%
+% pit3:
+%   size: from 3 to 9
+%   gold: only one, not in [1,1]
+%   pits: exact 3, random location, not in [1,1], [2,1] and [1,2]
+%   wumpus: only one, random fixed location, not in [1,1]
+%
+% random:
+%   size: from 2 to 9
+%   gold: random quantity (probability 0.1), not in [1,1]
+%   pits: random quantity (probability 0.2), random location, not in [1,1], [2,1] and [1,2]
+%   wumpus: only one, random fixed location, not in [1,1]
+%
+% TODO:
+%
+% walker:
+%   size: from 2 to 9
+%   gold: random quantity (probability 0.1), not in [1,1]
+%   pits: random quantity (probability 0.2), random location, not in [1,1], [2,1] and [1,2]
+%   wumpus: only one, random, move at will, not started in [1,1]
+%
+% New hazard: bats! Move you to a random location.
+% Make every room with 3 tunnels
+% Enough with the grids! Lets see the original topology
+%
+% 1000 points for each gold AFTER climbing alive
+% 500 points for killing the Wumpus
+% -500 for dying
+%
 
 :- dynamic([
   wumpus_world_extent/1,
@@ -173,8 +207,7 @@ restart([Stench,Breeze,Glitter,no,no]) :-
   glitter(Glitter).
 
 
-% initialize_world(World): Initializes the Wumpus world in Figure 6.2 of
-%                          [Russell & Norvig]
+% initialize_world(World): Initializes the Wumpus world in Figure 6.2 of Russell & Norvig
 %
 % wumpus_world_extent(E): defines world to be E by E
 % wumpus_location(X,Y): the Wumpus is in square X,Y
@@ -220,17 +253,17 @@ initialize_world(pit3) :-
   all_squares(E,AllSqrs),
   delete(AllSqrs, [1,1], AllSqrs1),  % all squares but [1,1]
   subtract(AllSqrs1, [[1,2],[2,1]], AllSqrs3), % all squares but [1,1],[2,1],[1,2]
-  random_member([GX,GY], AllSqrs1),  % gold position (only one)
-  addto_ww_init_state(gold(GX,GY)), % addto_ww_init_state(Fact), % Fact =.. [Object|Square], % Fact = pit([X,Y])
-  random_member([PX1,PY1], AllSqrs3),  % pit 1
+  random_member([GX,GY], AllSqrs1),  % gold position (only one), not in [1,1]
+  addto_ww_init_state(gold(GX,GY)), % Fact =.. [Object|Square], % Fact = pit([X,Y])
+  random_member([PX1,PY1], AllSqrs3),
   delete(AllSqrs3, [PX1, PY1], Pit1Sqrs),
-  random_member([PX2,PY2], Pit1Sqrs),  % pit 2
+  random_member([PX2,PY2], Pit1Sqrs),
   delete(Pit1Sqrs, [PX2, PY2], Pit2Sqrs),
-  random_member([PX3,PY3], Pit2Sqrs),  % pit 3
+  random_member([PX3,PY3], Pit2Sqrs),
   addto_ww_init_state(pit(PX1,PY1)), % pit 1
   addto_ww_init_state(pit(PX2,PY2)), % pit 2
   addto_ww_init_state(pit(PX3,PY3)), % pit 3
-  random_member([WX,WY],AllSqrs1),  % initialize wumpus
+  random_member([WX,WY],AllSqrs1),   % initialize wumpus (not [1,1])
   addto_ww_init_state(wumpus_location(WX,WY)),
   addto_ww_init_state(wumpus_orientation(0)),
   addto_ww_init_state(wumpus_health(alive)),
@@ -245,14 +278,14 @@ initialize_world(random) :-
   wumpusworldsize(E), % size extension, random, range [2, 9]
   addto_ww_init_state(wumpus_world_extent(E)),
   all_squares(E,AllSqrs),
-  gold_probability(PG),             % place gold
-  place_objects(gold,PG,AllSqrs),
+  gold_probability(PG),             % place gold (not [1,1])
+  place_objects(gold,PG,AllSqrs1),
   at_least_one_gold(E),
   delete(AllSqrs, [1,1], AllSqrs1), % all squares but [1,1]
-  %subtract(AllSqrs1, [[1,2],[2,1]], AllSqrs3), % all squares but [1,1],[2,1],[1,2]
+  subtract(AllSqrs1, [[1,2],[2,1]], AllSqrs3), % all squares but [1,1],[2,1],[1,2]
   pit_probability(PP),              % place pits
-  place_objects(pit,PP,AllSqrs1),   % AllSqrs3
-  random_member([WX,WY],AllSqrs1),  % initialize wumpus
+  place_objects(pit,PP,AllSqrs3),   % AllSqrs3
+  random_member([WX,WY],AllSqrs1),  % initialize wumpus (not [1,1])
   addto_ww_init_state(wumpus_location(WX,WY)),
   addto_ww_init_state(wumpus_orientation(0)),
   addto_ww_init_state(wumpus_health(alive)),
@@ -487,13 +520,14 @@ glitter(yes) :-
 
 glitter(no).
 
-
 % kill_wumpus: pretty obvious
 
 kill_wumpus :-
   retract(wumpus_health(alive)),
-  assert(wumpus_health(dead)).
-
+  assert(wumpus_health(dead)),
+  retract(agent_score(S)),
+  S1 is S + 500, % 500 point for killing the wumpus
+  assert(agent_score(S1)).
 
 % goforward(Bump): Attempts to move agent forward one unit along
 %   its current orientation.
@@ -541,7 +575,7 @@ update_agent_health :-
   retract(agent_health(alive)),
   assert(agent_health(dead)),
   retract(agent_score(S)),
-  S1 is S - 10000,
+  S1 is S - 500,
   assert(agent_score(S1)),
   format("You are Wumpus food!~n",[]).
 
@@ -552,7 +586,7 @@ update_agent_health :-
   retract(agent_health(alive)),
   assert(agent_health(dead)),
   retract(agent_score(S)),
-  S1 is S - 10000,
+  S1 is S - 500,
   assert(agent_score(S1)),
   format("Aaaaaaaaaaaaaaaaaaa!~n",[]).
 
@@ -698,25 +732,11 @@ display_dashes(E) :-
   name('-',[Dash]),
   format('~*c~n',[RowLen,Dash]).
 
-
-%sucesso com probabilidade P
+% success with probability P
 maybe(P):-
     random(N),
     N<P.
 maybe :- maybe(0.5).
-
-% del(X,L1,L2): True if L2 is L1 minus one occurrence of X.
-%del(X,[X|L],L).
-%
-%del(X,[Y|L1],[Y|L2]) :-
-%  del(X,L1,L2).
-%
-%random_member(X, List) :-
-%    List \== [],
-%    length(List, Len),
-%    N is random(Len),
-%    nth0(N, List, X).
-
 
 % assert_list(L): Assert all facts on list L.
 assert_list([]).
@@ -724,10 +744,6 @@ assert_list([]).
 assert_list([Fact|Facts]) :-
   assert(Fact),
   assert_list(Facts).
-
-% equality between two lists
-equal_list(X, Y) :-
-    subtract(X, Y, []).
 
 % some sizes cannot work
 wumpusworldsize(4) :-
