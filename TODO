@@ -1,0 +1,59 @@
+ TODO:
+
+- walker:
+   size: from 2 to 9
+   gold: random quantity (probability 0.1), not in [1,1]
+   pits: random quantity (probability 0.2), random location, not in [1,1], [2,1] and [1,2]
+   wumpus: only one, random, move at will, not started in [1,1]
+
+- New hazard: bats! Move you to a random location.
+
+- Make every room with 3 tunnels
+
+- Enough with the grids! Lets see the original topology:
+
+
+          +---+                         +---+
+  +-------+ 04+-------------------------+ 03+-------+
+  |       +-+-+                         +-+-+       |
+  |         |                             |         |
+  |         |                             |         |
+  |       +-+-+          +---+          +-+-+       |
+  |       | 09+----------+ 13+----------+ 08|       |
+  |       +-+-+          +-+-+          +-+-+       |
+  |         |              |              |         |
+  |         |              |              |         |
+  |         |            +-+-+            |         |
+  |         |         +--+ 18+--+         |         |
+  |         |         |  +---+  |         |         |
+  |         |         |         |         |         |
+  |       +-+-+     +-+-+     +-+-+     +-+-+       |
+  |       | 14+-----+ 19|     | 17+-----+ 12|       |
+  |       +-+-+     +-+-+     +-+-+     +-+-+       |
+  |         |         |         |         |         |
+  |         |         |         |         |         |
++-+-+     +-+-+     +-+-+     +-+-+     +-+-+     +-+-+
+| 05+-----+ 10|     | 20+-----+ 16|     | 07+-----+ 02|
++-+-+     +-+-+     +-+-+     +-+-+     +-+-+     +-+-+
+  |         |         |         |         |         |
+  |         |         |         |         |         |
+  |         |       +-+-+     +-+-+       |         |
+  |         +-------+ 15|     | 11+-------+         |
+  |                 +-+-+     +-+-+                 |
+  |                   |         |                   |
+  |                   |  +---+  |                   |
+  |                   +--+ 06+--+                   |
+  |                      +-+-+                      |
+  |                        |                        |
+  |                        |                        |
+  |                      +-+-+                      |
+  +----------------------+ 01+----------------------+
+                         +---+
+
+
+
+- Scores:
+  * 1000 points for each gold AFTER climbing alive
+  * 500 points for killing the Wumpus
+  * -500 for dying
+
