@@ -129,9 +129,6 @@ run_agent_trials(Trials,NextTrial,Score) :-
   NextTrial =< Trials,
   format("Trial ~d~n",[NextTrial]),
   wumpusworld(Type,_), % types: random, fig62, pit3
-%   initialize(random,Percept),
-%   initialize(fig62,Percept),
-%   initialize(pit3,Percept),
   initialize(Type,Percept),
   format("External init_agent...~n"),
   init_agent,                         % needs to be defined externally
@@ -369,6 +366,7 @@ at_least_one_gold(E) :-
   addto_ww_init_state(gold(X,Y)).
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % execute(Action,Percept): executes Action and returns Percept
 %
 %   Action is one of:
@@ -451,6 +449,7 @@ execute(climb,[Stench,Breeze,Glitter,no,no]) :-
   glitter(Glitter),
   format("You cannot leave the cave from here.~n",[]).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % decrement_score: subtracts one from agent_score for each move
 
@@ -459,6 +458,9 @@ decrement_score :-
   S1 is S - 1,
   assert(agent_score(S1)).
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Perceptions
 
 % stench(Stench): Stench = yes if wumpus (dead or alive) is in a square
 %   directly up, down, left, or right of the current agent location.
