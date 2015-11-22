@@ -161,7 +161,6 @@ run_agent_trial(NumActions,_) :-    % agent allowed only N actions as
 
 run_agent_trial(NumActions,Percept) :-
   run_agent(Percept,Action),          % needs to be defined externally
-%  nl,
   format("~nExternal run_agent(~w,~w)~n", [Percept, Action]),
   execute(Action,Percept1),
   display_world,
@@ -169,26 +168,15 @@ run_agent_trial(NumActions,Percept) :-
   run_agent_trial(NumActions1,Percept1).
 
 
-
-% initialize(Percept): initializes the Wumpus world and our fearless
-%   agent according to the given World and returns the percept from square
-%   1,1.  For now, the only world available is 'fig62' from Fig 6.2 of
-%   Russell and Norvig, but you should assume that initialize creates
-%   a random world.
-
-initialize([Stench,Breeze,Glitter,no,no]) :-
-  initialize_world(fig62),
-  initialize_agent,
-  stench(Stench),
-  breeze(Breeze),
-  glitter(Glitter).
-
 % initialize(World,Percept): initializes the Wumpus world and our fearless
 %   agent according to the given World and returns the Percept from square
-%   1,1.  World can be either 'fig62' for Figure 6.2 of Russell and Norvig,
-%   or 'random' to generate a random world.
+%   1,1.  
+%   World can be:
+%   fig62: for Figure 6.2 of Russell and Norvig,
+%   random: to generate a random world,
+%   pit3: a random world with only 3 pits.
 
-initialize(World,[Stench,Breeze,Glitter,no,no]) :- %,NLHint,Image]) :-
+initialize(World,[Stench,Breeze,Glitter,no,no]) :-
   initialize_world(World),
   initialize_agent,
   stench(Stench),
