@@ -28,7 +28,7 @@
 %     - Original by Gregory Yob (1972)
 %     - Larry Holder (accessed version Oct/2005)
 %     - Walter Nauber 09/02/2001
-%     - An Anonymous version of Hunt The Wumpus with menus (2012?)
+%     - An Anonymous version of Hunt The Wumpus with menus (aeric? 2012?)
 %
 %   Special thanks to:
 %     - Larry Holder (holder@cse.uta.edu) (version 1.0 and version 2.3)
@@ -37,185 +37,139 @@
 % A Prolog implementation of the Wumpus world described in Russell and
 % Norvig's "Artificial Intelligence: A Modern Approach", Section 6.2.
 
-:- dynamic([
-  wumpus_world_extent/1,
-  wumpus_location/2,
-  wumpus_health/1,
-  gold/2,
-  pit/2,
-  agent_location/2,
-  agent_orientation/1,
-  agent_in_cave/1,
-  agent_health/1,
-  agent_gold/1,
-  agent_arrows/1,
-  agent_score/1
-  ]).
+/******************************************************************* 
+  Problem Set 3
+  =============
+  HUNT THE WUMPUS GAME
+  Start by
+  ?- start.
+*******************************************************************/
 
+:- dynamic
+  pit/2,                % pit location
+  wumpus_location/2,    % wumpus location
+  wumpus/1,             % wumpus's health - alive/dead
+  agent_location/2,     % agent location
+  agent/1,              % agent's health - alive/dead
+  agent_orientation/1,  % agents is facing which direction
+  arrows/1.             % number of arrows left
 
-% initialize(Percept): initializes the Wumpus world and our fearless
-%   agent according to the given World and returns the percept from square
-%   1,1.  For now, the only world available is 'fig62' from Fig 6.2 of
-%   Russell and Norvig, but you should assume that initialize creates
-%   a random world.
+welcome :- 
+  nl,nl,
+  write('Welcome to "Hunt the Wumpus" simulation game'),
+  nl,
+  write('============================================'),
+  nl,
+  write('Go forward : execute(goforward,[Stench,Breeze,Wall,no]).'),
+  nl,
+  write('Turn left  : execute(turnleft,[Stench,Breeze,no,no]).'),
+  nl,
+  write('Turn right : execute(turnright,[Stench,Breeze,no,no]).'),
+  nl,
+  write('Shoot arrow: execute(shoot,[Stench,Breeze,no,Scream]).'),
+  nl,
+  write('Check player location:    agent_location(X,Y).'),
+  nl,
+  write('Check player orientation: agent_orientation(O).'),
+  nl,
+  write('Check player health:      agent(H).'),
+  nl,
+  write('Check arrows left:        arrows(L).'),
+  nl,
+  write('Simulation: simulation([Stench,Breeze,Wall,Scream]).'),
+  nl.
 
-initialize([Stench,Breeze,Glitter,no,no]) :-
-  initialize_world(fig62),
-  initialize_agent,
+% Initialize Everything and Start Game
+start :-
+  welcome,nl,
+  initialize([Stench,Breeze,no,no]),
   stench(Stench),
   breeze(Breeze),
-  glitter(Glitter).
+  write('Press Enter to continue'),
+  nl.
 
-
-% restart: restarts the current world from scratch.  For now, since we only
-%   have one world fig62, restart just reinitializes this world.
-
-restart([Stench,Breeze,Glitter,no,no]) :-
-  initialize_world(fig62),
-  initialize_agent,
+% 
+start([Stench,Breeze,no,no]) :-
+  welcome,nl,
+  initialize([Stench,Breeze,no,no]),
   stench(Stench),
   breeze(Breeze),
-  glitter(Glitter).
+  write('Press Enter to continue'),
+  nl.
 
+% initializes the Wumpus world and agent.
+initialize([Stench,Breeze,no,no]) :-
+  initialize_environment,
+  initialize_agent.
+  % stench(Stench),
+  % breeze(Breeze).
 
-% initialize_world(World): Initializes the Wumpus world in Figure 6.2 of
-%                          [Russell & Norvig]
-%
-% wumpus_world_extent(E): defines world to be E by E
-% wumpus_location(X,Y): the Wumpus is in square X,Y
-% wumpus_health(H): H is 'dead' or 'alive'
-% gold(X,Y): there is gold in square X,Y
-% pit(X,Y): there is a pit in square X,Y
-
-initialize_world(fig62) :-
-  retractall(wumpus_world_extent(_)),
+% Maze is set with wumpus alive in square (5,1) 
+% and pits in position (3,1), (6,2), (4,3) and (2,4)
+initialize_environment :-
   retractall(wumpus_location(_,_)),
-  retractall(wumpus_health(_)),
-  retractall(gold(_,_)),
+  retractall(wumpus(_)),
   retractall(pit(_,_)),
-  assert(wumpus_world_extent(4)),
-  assert(wumpus_location(1,3)),
-  assert(wumpus_health(alive)),
-  assert(gold(2,3)),
-  assert(pit(3,1)),
-  assert(pit(3,3)),
-  assert(pit(4,4)).
+  assert(wumpus_location(5,1)),     % wumpus is in square (5,1)
+  assert(wumpus(alive)),            % wumpus is alive
+  assert(pit(3,1)),                 % 4 locations of pit
+  assert(pit(6,2)),
+  assert(pit(4,3)),
+  assert(pit(2,4)).
 
-
-% initialize_agent: agent is initially alive, destitute (except for one
-%   arrow), in grid 1,1 and facing to the right (0 degrees).
-
+% Agent is initially alive in square (1,1) 
+% facing right (0 degree) with 1 arrow
 initialize_agent :-
   retractall(agent_location(_,_)),
   retractall(agent_orientation(_)),
-  retractall(agent_in_cave(_)),
-  retractall(agent_health(_)),
-  retractall(agent_gold(_)),
-  retractall(agent_arrows(_)),
-  retractall(agent_score(_)),
-  assert(agent_location(1,1)),
-  assert(agent_orientation(0)),
-  assert(agent_in_cave(yes)),
-  assert(agent_health(alive)),
-  assert(agent_gold(0)),
-  assert(agent_arrows(1)),
-  assert(agent_score(0)).
+  retractall(agent(_)),
+  retractall(arrows(_)),
+  assert(agent_location(1,1)),    % start in square (1,1)
+  assert(agent_orientation(0)),   % facing to the right (0 degrees)
+  assert(agent(alive)),           % agent is alive
+  assert(arrows(1)).              % agent has only 1 arrow
 
-
-% execute(Action,Percept): executes Action and returns Percept
-%
-%   Action is one of:
-%     goforward: move one square along current orientation if possible
-%     turnleft:  turn left 90 degrees
-%     turnright: turn right 90 degrees
-%     grab:      pickup gold if in square
-%     shoot:     shoot an arrow along orientation, killing wumpus if
-%                in that direction
-%     climb:     if in square 1,1, leaves the cave and adds 1000 points
-%                for each piece of gold
-%
-%   Percept = [Stench,Breeze,Glitter,Bump,Scream] each having
-%     a value of either 'yes' or 'no'.
-
-execute(_,[no,no,no,no,no]) :-
-  agent_health(dead), !,         % agent must be alive to execute actions
+% dead agent cannot execute any actions
+execute(_,[no,no,no,no]) :-
+  agent(dead), !,
   format("You are dead!~n",[]).
 
-execute(_,[no,no,no,no,no]) :-
-  agent_in_cave(no), !,         % agent must be in the cave
-  format("You have left the cave.~n",[]).
+% agent moves forward
+execute(goforward,[Stench,Breeze,Wall,no]) :-
+  goforward(Wall),        % update location and check if wall
+  update_agent_health,    % check whether same location as wumpus or pit
+  stench(Stench),         % check if smell Stench
+  breeze(Breeze),         % check if feel Breeze
+  agent_location(X,Y),
+  format("You now in ~d,",X),format("~d .~n",Y).
 
-execute(goforward,[Stench,Breeze,Glitter,Bump,no]) :-
-  decrement_score,
-  goforward(Bump),        % update location and check for bump
-  update_agent_health,    % check for wumpus or pit
-  stench(Stench),         % update rest of percept
-  breeze(Breeze),
-  glitter(Glitter).
-
-execute(turnleft,[Stench,Breeze,Glitter,no,no]) :-
-  decrement_score,
+% agent turns left
+execute(turnleft,[Stench,Breeze,no,no]) :-
   agent_orientation(Angle),
-  NewAngle is (Angle + 90) mod 360,
+  NewAngle is (Angle + 90) mod 360,     % turn 90 degree counter-clockwise
   retract(agent_orientation(Angle)),
-  assert(agent_orientation(NewAngle)),
+  assert(agent_orientation(NewAngle)),  % update agent orientation
   stench(Stench),
   breeze(Breeze),
-  glitter(Glitter).
+  write('You turned Left'),nl.
 
-execute(turnright,[Stench,Breeze,Glitter,no,no]) :-
-  decrement_score,
+% agent turns right
+execute(turnright,[Stench,Breeze,no,no]) :-
   agent_orientation(Angle),
-  NewAngle is (Angle + 270) mod 360,
+  NewAngle is (Angle + 270) mod 360,    % turn 90 degree clockwise
   retract(agent_orientation(Angle)),
-  assert(agent_orientation(NewAngle)),
+  assert(agent_orientation(NewAngle)),  % update agent orientation
   stench(Stench),
   breeze(Breeze),
-  glitter(Glitter).
+  write('You turned Right'),nl.
 
-execute(grab,[Stench,Breeze,no,no,no]) :-
-  decrement_score,
+% shoot action
+execute(shoot,[Stench,Breeze,no,Scream]) :-
   stench(Stench),
   breeze(Breeze),
-  get_the_gold.
+  shoot_arrow(Scream).  % check if wumpus screams after arrow is shot
 
-execute(shoot,[Stench,Breeze,Glitter,no,Scream]) :-
-  decrement_score,
-  stench(Stench),
-  breeze(Breeze),
-  glitter(Glitter),
-  shoot_arrow(Scream).
-
-execute(climb,[no,no,no,no,no]) :-
-  agent_location(1,1), !,
-  decrement_score,
-  agent_gold(G),
-  retract(agent_score(S)),
-  S1 is (S + (1000 * G)),
-  assert(agent_score(S1)),
-  retract(agent_in_cave(yes)),
-  assert(agent_in_cave(no)),
-  format("I am outta here.~n",[]).
-
-execute(climb,[Stench,Breeze,Glitter,no,no]) :-
-  decrement_score,
-  stench(Stench),
-  breeze(Breeze),
-  glitter(Glitter),
-  format("You cannot leave the cave from here.~n",[]).
-
-
-% decrement_score: subtracts one from agent_score for each move
-
-decrement_score :-
-  retract(agent_score(S)),
-  S1 is S - 1,
-  assert(agent_score(S1)).
-
-
-% stench(Stench): Stench = yes if wumpus (dead or alive) is in a square
-%   directly up, down, left, or right of the current agent location.
-
+% return Stench = yes if wumpus is next to agent location.
 stench(yes) :-
   agent_location(X,Y),
   X1 is X + 1,
@@ -226,15 +180,11 @@ stench(yes) :-
     wumpus_location(X0,Y) ;
     wumpus_location(X,Y1) ;
     wumpus_location(X,Y0) ;
-    wumpus_location(X,Y) ),
-  !.
+    wumpus_location(X,Y) ),!.
 
 stench(no).
 
-
-% breeze(Breeze): Breeze = yes if a pit is in a square directly up, down,
-%   left, or right of the current agent location.
-
+% return Breeze = yes if a pit is next to agent location.
 breeze(yes) :-
   agent_location(X,Y),
   X1 is X + 1,
@@ -245,51 +195,35 @@ breeze(yes) :-
     pit(X0,Y) ;
     pit(X,Y1) ;
     pit(X,Y0) ;
-    pit(X,Y) ),
-  !.
+    pit(X,Y) ),!.
 
 breeze(no).
 
-
-% glitter(Glitter): Glitter = yes if there is gold in the current agent
-%   location.
-
-glitter(yes) :-
-  agent_location(X,Y),
-  gold(X,Y),
-  !.
-
-glitter(no).
-
-
-% kill_wumpus: pretty obvious
-
+% slay the wumpus and win the game
 kill_wumpus :-
-  retract(wumpus_health(alive)),
-  assert(wumpus_health(dead)).
+  retract(wumpus(alive)),
+  assert(wumpus(dead)),    % update wumpus health
+  format("Grrrrrrrrr...!~n",[]),
+  format("You have killed Wumpus!~n",[]).
 
-
-% goforward(Bump): Attempts to move agent forward one unit along
-%   its current orientation.
-
+% Try to move agent one square towards its orientation
+% if agent does not move over the grid
 goforward(no) :-
   agent_orientation(Angle),
   agent_location(X,Y),
   new_location(X,Y,Angle,X1,Y1),
-  wumpus_world_extent(E),         % check if agent off world
   X1 > 0,
-  X1 =< E,
+  X1 =< 6,
   Y1 > 0,
-  Y1 =< E,
+  Y1 =< 4,
   !,
-  retract(agent_location(X,Y)),   % update location
-  assert(agent_location(X1,Y1)).
+  retract(agent_location(X,Y)),   
+  assert(agent_location(X1,Y1)).  % update agent location
 
-goforward(yes).     % Ran into wall, Bump = yes
+goforward(yes).     % Ran into wall, Wall = yes
 
-
-% new_location(X,Y,Orientation,X1,Y1): returns new coordinates X1,Y1
-%   after moving from X,Y along Orientation: 0, 90, 180, 270 degrees.
+% return new coordinates X1,Y1
+% after moing from X,Y along Orientation: 0, 90, 180, 270 degrees.
 
 new_location(X,Y,0,X1,Y) :-
   X1 is X + 1.
@@ -303,60 +237,39 @@ new_location(X,Y,180,X1,Y) :-
 new_location(X,Y,270,X,Y1) :-
   Y1 is Y - 1.
 
+% kill agent if in a room with a live wumpus or a pit.
 
-% update_agent_health: kills agent if in a room with a live wumpus or a
-%   pit.
-
+% eaten by wumpus
 update_agent_health :-
   agent_location(X,Y),
-  wumpus_health(alive),
+  wumpus(alive),
   wumpus_location(X,Y),
   !,
-  retract(agent_health(alive)),
-  assert(agent_health(dead)),
-  retract(agent_score(S)),
-  S1 is S - 10000,
-  assert(agent_score(S1)),
+  retract(agent(alive)),
+  assert(agent(dead)),     % update agent health
   format("You are Wumpus food!~n",[]).
 
+% fall into pit
 update_agent_health :-
   agent_location(X,Y),
   pit(X,Y),
   !,
-  retract(agent_health(alive)),
-  assert(agent_health(dead)),
-  retract(agent_score(S)),
-  S1 is S - 10000,
-  assert(agent_score(S1)),
-  format("Aaaaaaaaaaaaaaaaaaa!~n",[]).
+  retract(agent(alive)),
+  assert(agent(dead)),     % update agent health
+  format("Aaaaaaaaaaaaaaaaaaa!~n",[]),
+  format("You fall into a pit.~n",[]).
 
 update_agent_health.
 
-
-% get_the_gold: adds gold to agents loot if any gold in the square
-
-get_the_gold :-
-  agent_location(X,Y),
-  gold(X,Y), !,                   % there's gold in this square!
-  agent_gold(NGold),              %   add to agents loot
-  NGold1 is NGold + 1,
-  retract(agent_gold(NGold)),
-  assert(agent_gold(NGold1)),
-  format("You now have ~d piece(s) of gold!~n",NGold1),
-  retract(gold(X,Y)).             %   delete gold from square
-
-get_the_gold.
-
-
-% shoot_arrow(Scream): If agent has an arrow, then shoot it in the
-%   direction the agent is facing and listen for Scream.
-
+% If agent has an arrow, then shoot it in the direction 
+% the agent is facing and listen if wumpus Screams.
 shoot_arrow(Scream) :-
-  agent_arrows(Arrows),
+  arrows(Arrows),
   Arrows > 0, !,                  % agent has an arrow and will use it!
-  Arrows1 is Arrows - 1,          %   update number of arrows
-  retract(agent_arrows(Arrows)),
-  assert(agent_arrows(Arrows1)),
+  Arrows1 is Arrows - 1,          % update number of arrows
+  retract(arrows(Arrows)),
+  assert(arrows(Arrows1)),
+  write('You shot an arrow. '),
   format("You now have ~d arrow(s).~n",Arrows1),
   agent_location(X,Y),
   agent_orientation(Angle),
@@ -364,27 +277,22 @@ shoot_arrow(Scream) :-
 
 shoot_arrow(no).
 
-
-% propagate_arrow(X,Y,Angle,Scream): If wumpus is at X,Y then hear its
-%   woeful scream as you vanquish the creature.  If not, then move arrow
-%   one square along Angle and try again.  If arrow hits a wall, then
-%   you missed.
-
+% If wumpus is at X,Y then wumpus is killed.
+% If arrow hits a wall, then you missed.
 propagate_arrow(X,Y,_,yes) :-
   wumpus_location(X,Y), !,
   kill_wumpus.
 
+% Let the arrow travels along the direction
 propagate_arrow(X,Y,0,Scream) :-
   X1 is X + 1,
-  wumpus_world_extent(E),
-  X1 =< E,
+  X1 =< 6,
   !,
   propagate_arrow(X1,Y,0,Scream).
 
 propagate_arrow(X,Y,90,Scream) :-
   Y1 is Y + 1,
-  wumpus_world_extent(E),
-  Y1 =< E,
+  Y1 =< 4,
   !,
   propagate_arrow(X,Y1,90,Scream).
 
@@ -401,3 +309,44 @@ propagate_arrow(X,Y,270,Scream) :-
   propagate_arrow(X,Y1,270,Scream).
 
 propagate_arrow(_,_,_,no).
+
+% Simulation of agent's actions
+
+simulation([Stench,Breeze,Wall,Scream]) :- 
+nl,write('This is a simulation'),nl,
+write('===================='),nl,
+
+agent_location(X0,Y0),
+format("You start in ~d,",X0),format("~d .~n",Y0),
+
+execute(turnleft,[Stench,Breeze,no,no]),
+
+execute(goforward,[Stench,Breeze,Wall,no]),
+
+execute(goforward,[Stench,Breeze,Wall,no]),
+
+execute(turnright,[Stench,Breeze,no,no]),
+
+execute(goforward,[Stench,Breeze,Wall,no]),
+
+execute(goforward,[Stench,Breeze,Wall,no]),
+
+execute(turnleft,[Stench,Breeze,no,no]),
+
+execute(goforward,[Stench,Breeze,Wall,no]),
+
+execute(turnright,[Stench,Breeze,no,no]),
+
+execute(goforward,[Stench,Breeze,Wall,no]),
+
+execute(goforward,[Stench,Breeze,Wall,no]),
+
+execute(turnright,[Stench,Breeze,no,no]),
+
+execute(goforward,[Stench,Breeze,Wall,no]),
+
+execute(goforward,[Stench,Breeze,Wall,no]),
+
+execute(shoot,[_,_,_,_]).
+
+% execute(shoot,[Stench,Breeze,no,Scream]).
