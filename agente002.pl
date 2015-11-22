@@ -43,7 +43,7 @@
 %   - perfect for fig62
 %   - does not so well in any other case
 
-:- load_files([wumpus3]).
+:- load_files([wumpus]).
 :- dynamic([lacoes/1]).
 
 lacoes([goforward,turnleft,goforward,goforward,grab,turnleft,turnleft,goforward,goforward,turnright,goforward,climb]).

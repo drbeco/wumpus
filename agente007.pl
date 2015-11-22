@@ -72,7 +72,7 @@
 % climb
 % shoot
 
-:- load_files([wumpus3]).
+:- load_files([wumpus]).
 
 wumpusworld(pit3, 4). %type: fig62, size 4; random, size 2-9; pit3, size: 3-9
 
