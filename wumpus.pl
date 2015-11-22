@@ -37,27 +37,49 @@
 % A Prolog implementation of the Wumpus world described in Russell and
 % Norvig's "Artificial Intelligence: A Modern Approach", Section 6.2.
 %
-% Version trabalho / Adapted. By Beco. 2012
+% Version swi-pl, by Walter Nauber, 29/Jan/2003
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% original file name: wumpus_world.pl
+%
+% Wumpus World Simulator v2.3
+%
+% Written by Larry Holder (holder@cse.uta.edu)
+%
+% A Prolog implementation of the Wumpus world described in Russell and
+% Norvigs "Artificial Intelligence: A Modern Approach", Section 6.2.
+% A few enhancements have been added:
+%   - random wumpus world generator
+%
+% See comments on the following interface procedures:
+%
+%   evaluate_agent(Trials,Score,Time)
+%   initialize(World,Percept)
+%
+% WNb
+% modified for SWI-Prolog
+% without the following enhancements:
+%     natural language hint, movement of wumpus, image processing, several tries per world
+% Walter Nauber
+% 29.01.03
+% changes: max_agent_actions = 8*n*n
+%          wumpus_world_default_extent(5).
 
-:- dynamic([
-  wumpus_world_extent/1,
-  wumpus_location/2,
-  wumpus_health/1,
-  gold/2,
-  pit/2,
-  agent_location/2,
-  agent_orientation/1,
-  agent_in_cave/1,
-  agent_health/1,
-  agent_gold/1,
-  agent_arrows/1,
-  agent_score/1
-  ]).
+:- load_files([utils]).  % Basic utilities
+
+:- dynamic  wumpus_world_default_extent/1, max_agent_actions/1.   
+:- dynamic  wumpus_world_extent/1,  wumpus_location/2, wumpus_health/1,  gold/2,  pit/2.
+:- dynamic  agent_location/2,  agent_orientation/1,  agent_in_cave/1,  agent_health/1.
+:- dynamic  agent_gold/1,  agent_arrows/1,  agent_score/1.
+
+wumpus_world_default_extent(5).  % Default size of the cave is 5x5
+% WNe
+
 
 gold_probability(0.10).  % Probability that a location has gold
 pit_probability(0.20).   % Probability that a non-(1,1) location has a pit
-%max_agent_tries(10).     % Maximum agent tries (climb or die) per world
-max_agent_actions(64).   % Maximum actions per trial allowed by agent
+max_agent_actions(128).  % Maximum actions per trial allowed by agent
+
 
 % evaluate_agent(Trials,Score,Time): Performs Trials trials, where each
 %   trial involves generating a random wumpus world, initializing the
@@ -74,28 +96,36 @@ max_agent_actions(64).   % Maximum actions per trial allowed by agent
 %                 should return an appropriate Action, which is then
 %                 executed.
 
-evaluate_agent(Trials,Score) :-
-  run_agent_trials(Trials,1,Score).
-
+evaluate_agent(Trials,Score,Time) :-
+  run_agent_trials(Trials,1,Score,Time).
 
 % run_agent_trials(Trials,NextTrial,Score,Time): Runs trials from NextTrial
 %   to Trial and returns the total Score and Time (millisecs) spent inside
 %   calls to init_agent and run_agent.
 
-run_agent_trials(Trials,NextTrial,0) :-
+run_agent_trials(Trials,NextTrial,0,0) :-
   NextTrial > Trials.
 
-run_agent_trials(Trials,NextTrial,Score) :-
+run_agent_trials(Trials,NextTrial,Score,Time) :-
   NextTrial =< Trials,
   format("Trial ~d~n",[NextTrial]),
   initialize(random,Percept),
-%   initialize(fig62,Percept),
+%WN
+%  statistics(runtime,[T1|_]),
+  statistics(cputime,T1),
+%WN
   init_agent,                         % needs to be defined externally
-  run_agent_trial(1,Percept),
+%WN
+%  statistics(runtime,[T2|_]),
+
+  statistics(cputime,T2),
+%WN
+  run_agent_trial(1,Percept,Time1),
   agent_score(Score1),
   NextTrial1 is NextTrial + 1,
-  run_agent_trials(Trials,NextTrial1,Score2),
-  Score is Score1 + Score2.
+  run_agent_trials(Trials,NextTrial1,Score2,Time2),
+  Score is Score1 + Score2,
+  Time is Time1 + Time2 + (T2 - T1).
 
 
 % run_agent_trial(NumActions,Percept,Time):  Continues to ask for and
@@ -104,63 +134,66 @@ run_agent_trials(Trials,NextTrial,Score) :-
 %   defined by max_agent_actions(M).  In any case, the total time
 %   spent during calls to run_agent is returned in Time (millisecs).
 
-run_agent_trial(_,_) :-             % trial over when agent dies or
+run_agent_trial(_,_,0) :-             % trial over when agent dies or
   ( agent_health(dead) ;              %   leaves cave
     agent_in_cave(no) ),
   !.
 
-run_agent_trial(NumActions,_) :-    % agent allowed only N actions as
+run_agent_trial(NumActions,_,0) :-    % agent allowed only N actions as
   max_agent_actions(N),               %   defined by max_agent_actions(N)
   NumActions > N,
   !.
 
-run_agent_trial(NumActions,Percept) :-
+run_agent_trial(NumActions,Percept,Time) :-
+%WN
+%  statistics(runtime,[T1|_]),
+  statistics(cputime,T1),
+
+%WN
   run_agent(Percept,Action),          % needs to be defined externally
+%WN
+%  statistics(runtime,[T2|_]),
+  statistics(cputime,T2),
+
+%WN
   execute(Action,Percept1),
   NumActions1 is NumActions + 1,
-  run_agent_trial(NumActions1,Percept1).
-
-
-
-% initialize(Percept): initializes the Wumpus world and our fearless
-%   agent according to the given World and returns the percept from square
-%   1,1.  For now, the only world available is 'fig62' from Fig 6.2 of
-%   Russell and Norvig, but you should assume that initialize creates
-%   a random world.
-
-initialize([Stench,Breeze,Glitter,no,no]) :-
-  initialize_world(fig62),
-  initialize_agent,
-  stench(Stench),
-  breeze(Breeze),
-  glitter(Glitter).
+  run_agent_trial(NumActions1,Percept1,Time1),
+  Time is Time1 + (T2 - T1).
 
 % initialize(World,Percept): initializes the Wumpus world and our fearless
 %   agent according to the given World and returns the Percept from square
 %   1,1.  World can be either 'fig62' for Figure 6.2 of Russell and Norvig,
 %   or 'random' to generate a random world.
 
-initialize(World,[Stench,Breeze,Glitter,no,no]) :- %,NLHint,Image]) :-
+initialize(World,[Stench,Breeze,Glitter,no,no]) :-
   initialize_world(World),
   initialize_agent,
   stench(Stench),
   breeze(Breeze),
   glitter(Glitter).
+%  display_action(initialize).
 
 
-% restart: restarts the current world from scratch.  For now, since we only
-%   have one world fig62, restart just reinitializes this world.
 
-restart([Stench,Breeze,Glitter,no,no]) :-
-  initialize_world(fig62),
-  initialize_agent,
-  stench(Stench),
-  breeze(Breeze),
-  glitter(Glitter).
-
-
-% initialize_world(World): Initializes the Wumpus world in Figure 6.2 of
-%                          [Russell & Norvig]
+% initialize_world(World): Initializes the Wumpus world.  World is either
+%   fig62, which generates the wumpus world in Figure 6.2 of [Russell &
+%   Norvig], or World=random, which generates a random world according to
+%   the following guidelines:
+%
+%   Size: The size of the wumpus world is fixed at 4x4, but can be set
+%         arbitrarily using different values for wumpus_world_extent(E).
+%
+%   Wumpus Location: The initial wumpus location is chosen at random
+%                    anywhere in the cave except location (1,1).
+%
+%   Pit Location: Each square has a pit with probability P set by
+%                 pit_probability(P), except location (1,1), which
+%                 will never have a pit.
+%
+%   Gold Location: Each square has gold with probability P set by
+%                  gold_probability(P).  At least one square will have
+%                  gold; no more than one gold piece per square.
 %
 % wumpus_world_extent(E): defines world to be E by E
 % wumpus_location(X,Y): the Wumpus is in square X,Y
@@ -169,81 +202,46 @@ restart([Stench,Breeze,Glitter,no,no]) :-
 % pit(X,Y): there is a pit in square X,Y
 
 initialize_world(fig62) :-
-  retractall(wumpus_world_extent(_)),
-  retractall(wumpus_location(_,_)),
-  retractall(wumpus_health(_)),
-  retractall(gold(_,_)),
-  retractall(pit(_,_)),
-  assert(wumpus_world_extent(4)),
-  assert(wumpus_location(1,3)),
-  assert(wumpus_health(alive)),
-  assert(gold(2,3)),
-  assert(pit(3,1)),
-  assert(pit(3,3)),
-  assert(pit(4,4)).
+  ww_retractall,
+  retractall(ww_initial_state(_)),
+  assert(ww_initial_state([])),
+  addto_ww_init_state(wumpus_world_extent(4)),
+  addto_ww_init_state(wumpus_location(1,3)),
+  addto_ww_init_state(wumpus_health(alive)),
+  addto_ww_init_state(gold(2,3)),
+  addto_ww_init_state(pit(3,1)),
+  addto_ww_init_state(pit(3,3)),
+  addto_ww_init_state(pit(4,4)),
+  ww_initial_state(L),
+  assert_list(L).
 
 initialize_world(random) :-
   ww_retractall,
   retractall(ww_initial_state(_)),
   assert(ww_initial_state([])),
-  addto_ww_init_state(wumpus_world_extent(4)),
-  all_squares(4,AllSqrs),
+%WNb
+  wumpus_world_default_extent(E),
+  retract(max_agent_actions(_)),
+  M is (8*E*E), 
+  assert(max_agent_actions(M)),
+  addto_ww_init_state(wumpus_world_extent(E)),
+  all_squares(E,AllSqrs),
   gold_probability(PG),             % place gold
-  place_objects(gold,PG,AllSqrs),
-  at_least_one_gold(4),
-  del([1,1],AllSqrs,AllSqrs1),
-  pit_probability(PP),              % place pits
-  place_objects(pit,PP,AllSqrs1),
+  place_objects(gold,PG,AllSqrs,GRestSqrs),
+  at_least_one_gold(E,AllSqrs,GRestSqrs,PSqrs),
+  delete(AllSqrs,[1,1],AllSqrs1),   % deletes element [1,1] from list AllSqrs
   random_member([WX,WY],AllSqrs1),  % initialize wumpus
+  delete(PSqrs,[1,1],PSqrs1),       % deletes element [1,1] from list PSqrs
+  delete(PSqrs1,[WX,WY],PSqrs2),    % deletes element [WX,WY] from list PSqrs1
+  pit_probability(PP),              % place pits
+  place_objects(pit,PP,PSqrs2,_),
+  
+%WNe
   addto_ww_init_state(wumpus_location(WX,WY)),
-  addto_ww_init_state(wumpus_orientation(0)),
   addto_ww_init_state(wumpus_health(alive)),
-  addto_ww_init_state(wumpus_last_action(nil)),
-%   wumpus_movement_rules(Rules),
-%   random_member(Rule,Rules),
-%   addto_ww_init_state(wumpus_movement_rule(Rule)),
   ww_initial_state(L),
   assert_list(L).
 
-% addto_ww_init_state(Fact): Adds Fact to the list L stored in
-%   ww_initial_state(L).
-
-addto_ww_init_state(Fact) :-
-  retract(ww_initial_state(L)),
-  assert(ww_initial_state([Fact|L])).
-
-% all_squares(Extent,AllSqrs): AllSqrs is the list of all possible
-%   squares [X,Y] in a wumpus world of size Extent by Extent.
-
-all_squares(Extent,AllSqrs) :-
-  all_squares_1(Extent,1,1,AllSqrs).
-
-all_squares_1(Extent,Extent,Extent,[[Extent,Extent]]).
-
-all_squares_1(Extent,Row,Extent,[[Row,Extent]|RestSqrs]) :-
-  Row < Extent,
-  Row1 is Row + 1,
-  all_squares_1(Extent,Row1,1,RestSqrs).
-
-all_squares_1(Extent,Row,Col,[[Row,Col]|RestSqrs]) :-
-  Col < Extent,
-  Col1 is Col + 1,
-  all_squares_1(Extent,Row,Col1,RestSqrs).
-
-% place_objects(Object,P,Squares): For each square in Squares, place
-%   Object at square with probability P.
-
-place_objects(_,_,[]).
-
-place_objects(Object,P,[Square|Squares]) :-
-  maybe(P),   % succeeds with probability P
-  !,
-  Fact =.. [Object|Square],
-  addto_ww_init_state(Fact),
-  place_objects(Object,P,Squares).
-
-place_objects(Object,P,[_|Squares]) :-
-  place_objects(Object,P,Squares).
 
 % initialize_agent: agent is initially alive, destitute (except for one
 %   arrow), in grid 1,1 and facing to the right (0 degrees).
@@ -265,31 +263,86 @@ initialize_agent :-
   assert(agent_score(0)).
 
 
+% ww_retractall: Retract all wumpus world information, except about the
+%   agent.
+
 ww_retractall :-
   retractall(wumpus_world_extent(_)),
   retractall(wumpus_location(_,_)),
-  retractall(wumpus_orientation(_)),
   retractall(wumpus_health(_)),
-  retractall(wumpus_last_action(_)),
-  retractall(wumpus_movement_rule(_)),
   retractall(gold(_,_)),
   retractall(pit(_,_)).
 
-% at_least_one_gold(Extent): Ensures that at least on gold piece is
-%   somewhere in the wumpus world.
 
-at_least_one_gold(_) :-
-  ww_initial_state(L),
-  member(gold(_,_),L),
+% addto_ww_init_state(Fact): Adds Fact to the list L stored in
+%   ww_initial_state(L).
+
+addto_ww_init_state(Fact) :-
+  retract(ww_initial_state(L)),
+  assert(ww_initial_state([Fact|L])).
+
+
+% assert_list(L): Assert all facts on list L.
+
+assert_list([]).
+
+assert_list([Fact|Facts]) :-
+  assert(Fact),
+  assert_list(Facts).
+
+
+% all_squares(Extent,AllSqrs): AllSqrs is the list of all possible
+%   squares [X,Y] in a wumpus world of size Extent by Extent.
+
+all_squares(Extent,AllSqrs) :-
+  all_squares_1(Extent,1,1,AllSqrs).
+
+all_squares_1(Extent,Extent,Extent,[[Extent,Extent]]).
+
+all_squares_1(Extent,Row,Extent,[[Row,Extent]|RestSqrs]) :-
+  Row < Extent,
+  Row1 is Row + 1,
+  all_squares_1(Extent,Row1,1,RestSqrs).
+
+all_squares_1(Extent,Row,Col,[[Row,Col]|RestSqrs]) :-
+  Col < Extent,
+  Col1 is Col + 1,
+  all_squares_1(Extent,Row,Col1,RestSqrs).
+
+
+% place_objects(Object,P,Squares): For each square in Squares, place
+%   Object at square with probability P.
+
+%WNb
+place_objects(_,_,[],[]).
+
+place_objects(Object,P,[Square|Squares],RestSquares) :-
+  maybe(P),   % succeeds with probability P
+  !,
+  Fact =.. [Object|Square],
+  addto_ww_init_state(Fact),
+  place_objects(Object,P,Squares,RestSquares).
+
+place_objects(Object,P,[Square|Squares],[Square|RestSquares]) :-
+  place_objects(Object,P,Squares, RestSquares).
+
+
+% at_least_one_gold(Extent,AllSqrs,GRestSqrs,PSqrs):
+% Ensures that at least on gold piece is somewhere in the wumpus world
+
+at_least_one_gold(_,AllSqrs,GRestSqrs,GRestSqrs) :-
+  \+ AllSqrs=GRestSqrs,
   !.
 
-at_least_one_gold(E) :-
-  E1 is E + 1,
-  random(1,E1,X),
-  random(1,E1,Y),
+at_least_one_gold(E,AllSqrs,AllSqrs,GRestSqrs) :-
+   random3(1,E,X),
+   random3(1,E,Y),
+   delete(AllSqrs,[X,Y],GRestSqrs),
+%WNe
   addto_ww_init_state(gold(X,Y)).
 
 
+%------------------------------------------------------------------------
 % execute(Action,Percept): executes Action and returns Percept
 %
 %   Action is one of:
@@ -302,8 +355,8 @@ at_least_one_gold(E) :-
 %     climb:     if in square 1,1, leaves the cave and adds 1000 points
 %                for each piece of gold
 %
-%   Percept = [Stench,Breeze,Glitter,Bump,Scream] each having
-%     a value of either 'yes' or 'no'.
+%   Percept = [Stench,Breeze,Glitter,Bump,Scream]
+%             The five parameters are either 'yes' or 'no'.
 
 execute(_,[no,no,no,no,no]) :-
   agent_health(dead), !,         % agent must be alive to execute actions
@@ -319,7 +372,8 @@ execute(goforward,[Stench,Breeze,Glitter,Bump,no]) :-
   update_agent_health,    % check for wumpus or pit
   stench(Stench),         % update rest of percept
   breeze(Breeze),
-  glitter(Glitter).
+  glitter(Glitter),
+  display_action(goforward).
 
 execute(turnleft,[Stench,Breeze,Glitter,no,no]) :-
   decrement_score,
@@ -329,7 +383,8 @@ execute(turnleft,[Stench,Breeze,Glitter,no,no]) :-
   assert(agent_orientation(NewAngle)),
   stench(Stench),
   breeze(Breeze),
-  glitter(Glitter).
+  glitter(Glitter),
+  display_action(turnleft).
 
 execute(turnright,[Stench,Breeze,Glitter,no,no]) :-
   decrement_score,
@@ -339,22 +394,25 @@ execute(turnright,[Stench,Breeze,Glitter,no,no]) :-
   assert(agent_orientation(NewAngle)),
   stench(Stench),
   breeze(Breeze),
-  glitter(Glitter).
+  glitter(Glitter),
+  display_action(turnright).
 
 execute(grab,[Stench,Breeze,no,no,no]) :-
   decrement_score,
+  get_the_gold,
   stench(Stench),
   breeze(Breeze),
-  get_the_gold.
+  display_action(grab).
 
 execute(shoot,[Stench,Breeze,Glitter,no,Scream]) :-
   decrement_score,
+  shoot_arrow(Scream),
   stench(Stench),
   breeze(Breeze),
   glitter(Glitter),
-  shoot_arrow(Scream).
+  display_action(shoot).
 
-execute(climb,[no,no,no,no,no]) :-
+execute(climb,[no,no,no,no,no]) :-  % climb works
   agent_location(1,1), !,
   decrement_score,
   agent_gold(G),
@@ -363,6 +421,7 @@ execute(climb,[no,no,no,no,no]) :-
   assert(agent_score(S1)),
   retract(agent_in_cave(yes)),
   assert(agent_in_cave(no)),
+  display_action(climb),
   format("I am outta here.~n",[]).
 
 execute(climb,[Stench,Breeze,Glitter,no,no]) :-
@@ -370,8 +429,8 @@ execute(climb,[Stench,Breeze,Glitter,no,no]) :-
   stench(Stench),
   breeze(Breeze),
   glitter(Glitter),
+  display_action(climb),
   format("You cannot leave the cave from here.~n",[]).
-
 
 % decrement_score: subtracts one from agent_score for each move
 
@@ -413,7 +472,7 @@ breeze(yes) :-
     pit(X0,Y) ;
     pit(X,Y1) ;
     pit(X,Y0) ;
-    pit(X,Y) ),
+    pit(X,Y)  ),
   !.
 
 breeze(no).
@@ -476,6 +535,7 @@ new_location(X,Y,270,X,Y1) :-
 %   pit.
 
 update_agent_health :-
+  agent_health(alive),
   agent_location(X,Y),
   wumpus_health(alive),
   wumpus_location(X,Y),
@@ -483,20 +543,35 @@ update_agent_health :-
   retract(agent_health(alive)),
   assert(agent_health(dead)),
   retract(agent_score(S)),
-  S1 is S - 10000,
+  S1 is S - 1500, %WN
   assert(agent_score(S1)),
   format("You are Wumpus food!~n",[]).
 
 update_agent_health :-
+  agent_health(alive),
   agent_location(X,Y),
   pit(X,Y),
   !,
   retract(agent_health(alive)),
   assert(agent_health(dead)),
   retract(agent_score(S)),
-  S1 is S - 10000,
+  S1 is S - 1500,  %WN
   assert(agent_score(S1)),
   format("Aaaaaaaaaaaaaaaaaaa!~n",[]).
+
+%WNb
+update_agent_health :-
+  agent_health(alive),
+  agent_location(X,Y),
+  pit(X,Y),
+  !,
+  retract(agent_health(alive)),
+  assert(agent_health(dead)),
+  retract(agent_score(S)),
+  S1 is S - 1500,  %WN
+  assert(agent_score(S1)),
+  format("Aaaaaaaaaaaaaaaaaaa!~n",[]).
+%WNe
 
 update_agent_health.
 
@@ -505,7 +580,7 @@ update_agent_health.
 
 get_the_gold :-
   agent_location(X,Y),
-  gold(X,Y), !,                   % there's gold in this square!
+  gold(X,Y), !,                   % theres gold in this square!
   agent_gold(NGold),              %   add to agents loot
   NGold1 is NGold + 1,
   retract(agent_gold(NGold)),
@@ -540,7 +615,12 @@ shoot_arrow(no).
 
 propagate_arrow(X,Y,_,yes) :-
   wumpus_location(X,Y), !,
-  kill_wumpus.
+%WNb
+  kill_wumpus,
+  retract(agent_score(S)),
+  S1 is (S + 500),
+  assert(agent_score(S1)).
+%WNe
 
 propagate_arrow(X,Y,0,Scream) :-
   X1 is X + 1,
@@ -576,25 +656,21 @@ propagate_arrow(_,_,_,no).
 display_world :-
   nl,
   wumpus_world_extent(E),
-  display_rows(E,E),
-%  wumpus_orientation(WA),
+%WNb
+  display_rows(E,E).
+/*  
   wumpus_health(WH),
-%  wumpus_last_action(WAct),
-%  wumpus_movement_rule(Rule),
   agent_orientation(AA),
   agent_health(AH),
   agent_arrows(N),
   agent_gold(G),
-  agent_location(X,Y),
-%  format('wumpus_orientation(~d)~n',[WA]),
   format('wumpus_health(~w)~n',[WH]),
-%  format('wumpus_last_action(~w)~n',[WAct]),
-%  format('wumpus_movement_rule(~w)~n',[Rule]),
-  format('agent_location(~d,~d)~n',[X, Y]),
   format('agent_orientation(~d)~n',[AA]),
   format('agent_health(~w)~n',[AH]),
   format('agent_arrows(~d)~n',[N]),
   format('agent_gold(~d)~n',[G]).
+*/
+%WNe
 
 display_rows(0,E) :-
   !,
@@ -615,54 +691,56 @@ display_square(X,_,E) :-
   format('|~n',[]).
 
 display_square(X,Y,E) :-
-  format('| ',[]),
+  format('|',[]),
   display_info(X,Y),
   X1 is X + 1,
   display_square(X1,Y,E).
 
 display_info(X,Y) :-
-  display_location_fact(wumpus_location,X,Y,'W'),
-  display_location_fact(agent_location,X,Y,'A'),
+%WNb
+  agent_orientation(AO),
+  display_agent(AO,AC),
+  display_location_fact(agent_location,X,Y,AC),
+  display_location_fact(gold,X,Y,'G'),
   display_location_fact(pit,X,Y,'P'),
-  display_location_fact(gold,X,Y,'G').
+  write(' '),
+  wumpus_health(WH),
+  display_wumpus(WH,WC),
+  display_location_fact(wumpus_location,X,Y,WC).
+%WNe
 
 display_location_fact(Functor,X,Y,Atom) :-
   Fact =.. [Functor,X,Y],
   Fact,
   !,
-  format('~w ',[Atom]).
+  format('~w',[Atom]). %WN
 
 display_location_fact(_,_,_,_) :-
-  format('  ',[]).
+  format(' ',[]).
 
 display_dashes(E) :-
-  RowLen is (E * 10) + 1,
+  RowLen is (E * 6) + 1, %WN
   name('-',[Dash]),
   format('~*c~n',[RowLen,Dash]).
 
+%WNb
+%display_wumpus(Wumpus_Health,Wumpus_Char)
 
-%sucesso com probabilidade P
-maybe(P):-
-    random(N),
-    N<P.
-maybe :- maybe(0.5).
+display_wumpus(alive,'W').
+display_wumpus(dead, 'd').
 
-% del(X,L1,L2): True if L2 is L1 minus one occurrence of X.
-del(X,[X|L],L).
+%display_agent(Agent_Orientation,Agent_Char)
 
-del(X,[Y|L1],[Y|L2]) :-
-  del(X,L1,L2).
+display_agent(  0,'>').
+display_agent( 90,'^').
+display_agent(180,'<').
+display_agent(270,'V').
+%WNe
 
-random_member(X, List) :-
-    List \== [],
-    length(List, Len),
-    N is random(Len),
-    nth0(N, List, X).
+% display_action(Action): Updates display after Action taken and
+%   new percept generated.
 
-% assert_list(L): Assert all facts on list L.
+display_action(Action) :-
+  format("~nExecuting ~w~n",[Action]).
+%  (((\+ hidden_cave(yes)) -> display_world);true).
 
-assert_list([]).
-
-assert_list([Fact|Facts]) :-
-  assert(Fact),
-  assert_list(Facts).
