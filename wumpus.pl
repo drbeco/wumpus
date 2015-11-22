@@ -20,7 +20,7 @@
 % A Prolog implementation of the Wumpus world described in Russell and
 % Norvig's "Artificial Intelligence: A Modern Approach", Section 6.2.
 %
-% Version wumpustrab / Adapted. By Beco.
+% Version trabalho / Adapted. By Beco. 2012
 
 :- dynamic([
   wumpus_world_extent/1,
@@ -37,6 +37,9 @@
   agent_score/1
   ]).
 
+gold_probability(0.10).  % Probability that a location has gold
+pit_probability(0.20).   % Probability that a non-(1,1) location has a pit
+%max_agent_tries(10).     % Maximum agent tries (climb or die) per world
 max_agent_actions(64).   % Maximum actions per trial allowed by agent
 
 % evaluate_agent(Trials,Score,Time): Performs Trials trials, where each
@@ -68,8 +71,8 @@ run_agent_trials(Trials,NextTrial,0) :-
 run_agent_trials(Trials,NextTrial,Score) :-
   NextTrial =< Trials,
   format("Trial ~d~n",[NextTrial]),
-  %initialize(random,Percept),
-  initialize(fig62,Percept),
+  initialize(random,Percept),
+%   initialize(fig62,Percept),
   init_agent,                         % needs to be defined externally
   run_agent_trial(1,Percept),
   agent_score(Score1),
@@ -162,6 +165,68 @@ initialize_world(fig62) :-
   assert(pit(3,3)),
   assert(pit(4,4)).
 
+initialize_world(random) :-
+  ww_retractall,
+  retractall(ww_initial_state(_)),
+  assert(ww_initial_state([])),
+  addto_ww_init_state(wumpus_world_extent(4)),
+  all_squares(4,AllSqrs),
+  gold_probability(PG),             % place gold
+  place_objects(gold,PG,AllSqrs),
+  at_least_one_gold(4),
+  del([1,1],AllSqrs,AllSqrs1),
+  pit_probability(PP),              % place pits
+  place_objects(pit,PP,AllSqrs1),
+  random_member([WX,WY],AllSqrs1),  % initialize wumpus
+  addto_ww_init_state(wumpus_location(WX,WY)),
+  addto_ww_init_state(wumpus_orientation(0)),
+  addto_ww_init_state(wumpus_health(alive)),
+  addto_ww_init_state(wumpus_last_action(nil)),
+%   wumpus_movement_rules(Rules),
+%   random_member(Rule,Rules),
+%   addto_ww_init_state(wumpus_movement_rule(Rule)),
+  ww_initial_state(L),
+  assert_list(L).
+
+% addto_ww_init_state(Fact): Adds Fact to the list L stored in
+%   ww_initial_state(L).
+
+addto_ww_init_state(Fact) :-
+  retract(ww_initial_state(L)),
+  assert(ww_initial_state([Fact|L])).
+
+% all_squares(Extent,AllSqrs): AllSqrs is the list of all possible
+%   squares [X,Y] in a wumpus world of size Extent by Extent.
+
+all_squares(Extent,AllSqrs) :-
+  all_squares_1(Extent,1,1,AllSqrs).
+
+all_squares_1(Extent,Extent,Extent,[[Extent,Extent]]).
+
+all_squares_1(Extent,Row,Extent,[[Row,Extent]|RestSqrs]) :-
+  Row < Extent,
+  Row1 is Row + 1,
+  all_squares_1(Extent,Row1,1,RestSqrs).
+
+all_squares_1(Extent,Row,Col,[[Row,Col]|RestSqrs]) :-
+  Col < Extent,
+  Col1 is Col + 1,
+  all_squares_1(Extent,Row,Col1,RestSqrs).
+
+% place_objects(Object,P,Squares): For each square in Squares, place
+%   Object at square with probability P.
+
+place_objects(_,_,[]).
+
+place_objects(Object,P,[Square|Squares]) :-
+  maybe(P),   % succeeds with probability P
+  !,
+  Fact =.. [Object|Square],
+  addto_ww_init_state(Fact),
+  place_objects(Object,P,Squares).
+
+place_objects(Object,P,[_|Squares]) :-
+  place_objects(Object,P,Squares).
 
 % initialize_agent: agent is initially alive, destitute (except for one
 %   arrow), in grid 1,1 and facing to the right (0 degrees).
@@ -181,6 +246,31 @@ initialize_agent :-
   assert(agent_gold(0)),
   assert(agent_arrows(1)),
   assert(agent_score(0)).
+
+
+ww_retractall :-
+  retractall(wumpus_world_extent(_)),
+  retractall(wumpus_location(_,_)),
+  retractall(wumpus_orientation(_)),
+  retractall(wumpus_health(_)),
+  retractall(wumpus_last_action(_)),
+  retractall(wumpus_movement_rule(_)),
+  retractall(gold(_,_)),
+  retractall(pit(_,_)).
+
+% at_least_one_gold(Extent): Ensures that at least on gold piece is
+%   somewhere in the wumpus world.
+
+at_least_one_gold(_) :-
+  ww_initial_state(L),
+  member(gold(_,_),L),
+  !.
+
+at_least_one_gold(E) :-
+  E1 is E + 1,
+  random(1,E1,X),
+  random(1,E1,Y),
+  addto_ww_init_state(gold(X,Y)).
 
 
 % execute(Action,Percept): executes Action and returns Percept
@@ -398,7 +488,7 @@ update_agent_health.
 
 get_the_gold :-
   agent_location(X,Y),
-  gold(X,Y), !,                   % theres gold in this square!
+  gold(X,Y), !,                   % there's gold in this square!
   agent_gold(NGold),              %   add to agents loot
   NGold1 is NGold + 1,
   retract(agent_gold(NGold)),
@@ -478,10 +568,12 @@ display_world :-
   agent_health(AH),
   agent_arrows(N),
   agent_gold(G),
+  agent_location(X,Y),
 %  format('wumpus_orientation(~d)~n',[WA]),
   format('wumpus_health(~w)~n',[WH]),
 %  format('wumpus_last_action(~w)~n',[WAct]),
 %  format('wumpus_movement_rule(~w)~n',[Rule]),
+  format('agent_location(~d,~d)~n',[X, Y]),
   format('agent_orientation(~d)~n',[AA]),
   format('agent_health(~w)~n',[AH]),
   format('agent_arrows(~d)~n',[N]),
@@ -531,3 +623,29 @@ display_dashes(E) :-
   name('-',[Dash]),
   format('~*c~n',[RowLen,Dash]).
 
+
+%sucesso com probabilidade P
+maybe(P):-
+    random(N),
+    N<P.
+maybe :- maybe(0.5).
+
+% del(X,L1,L2): True if L2 is L1 minus one occurrence of X.
+del(X,[X|L],L).
+
+del(X,[Y|L1],[Y|L2]) :-
+  del(X,L1,L2).
+
+random_member(X, List) :-
+    List \== [],
+    length(List, Len),
+    N is random(Len),
+    nth0(N, List, X).
+
+% assert_list(L): Assert all facts on list L.
+
+assert_list([]).
+
+assert_list([Fact|Facts]) :-
+  assert(Fact),
+  assert_list(Facts).
