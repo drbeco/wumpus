@@ -26,5 +26,7 @@ Special thanks to:
 
 A very special thanks to Gregory Yob (in memoriam) and beloved wife
 kind enough to answer my call and share with me a picture to upload 
-o his wikipedia page ( https://en.wikipedia.org/wiki/Gregory_Yob ).
+to his wikipedia page:
+
+https://en.wikipedia.org/wiki/Gregory_Yob
 
