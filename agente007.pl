@@ -74,7 +74,41 @@
 
 :- load_files([wumpus]).
 
-wumpusworld(pit3, 4). %type: fig62, size 4; random, size 2-9; pit3, size: 3-9
+% world_setup([Random, Topology, Size, Move, Actions, Tries, Gold, Pit, Bat]).
+%
+%   world_setup(Randomness, Topology, Size, Movement, Actions, Tries, Gold, Pit, Bat)
+%       Randomness: - fig62 (implies Topology=grid, Size=4, Movement=stander)
+%                   - random (implies Size range [2-9] or 20) (default)
+%                   - pit3 (implies Size range [3-9] or 20)
+%       Topology:   - grid (default)
+%                   - dodeca (aka dodecahedron original map)
+%       Size:       - 4, grid, fig62
+%                   - [2-9] grid, random (default 4)
+%                   - [3-9] grid, pit3
+%                   - 20, dodeca
+%       Movement:   - stander (does not move at all) (default)
+%                   - walker (moves when hears shoot)
+%                   - runner (moves all the time)
+%       Actions:    - 2 to 400, number of maximum agent actions allowed (default 64)
+%       Tries:      - Number of trials (default 1)
+%       Gold:       - Gold probability per square. When fig62 or pit3, only one gold. (default 0.1)
+%       Pit:        - Pit probability per square. When fig62 or pit3, only 3 pits. (default 0.2)
+%       Bat:        - yes or no. When fig62, no. (default no)
+
+%world_setup([random, grid, 4, stander, 64, 1, 0.1, 0.2, no]).  % (default)
+%world_setup([random, grid, 9, stander, 10, 1, 0.3, 0.3, no]).
+%world_setup([random, grid, 1, stander, 10, 1, 0.1, 0.1, no]).  % error
+%world_setup([random, grid, 2, stander, 10, 1, 0.1, 0.2, no]). 
+%world_setup([random, grid, 10, stander, 10, 1, 0.1, 0.1, no]). % error
+%world_setup([pit3, grid, 2, stander, 10, 1, 0.1, 0.2, no]).    % error
+%world_setup([pit3, grid, 3, stander, 10, 1, 0.1, 0.2, no]).
+%world_setup([pit3, grid, 4, stander, 10, 1, 0.1, 0.2, no]).
+%world_setup([pit3, grid, 9, stander, 10, 1, 0.1, 0.2, no]).
+%world_setup([pit3, grid, 10, stander, 10, 1, 0.1, 0.2, no]).   % error
+%world_setup([pit3, dodeca, 20, stander, 100, 1, 0.1, 0.2, yes]).
+
+%world_setup([pit3, dodeca, 20, stander, 100, 1, 0.1, 0.2, no]).
+world_setup([pit3, grid, 4, stander, 64, 1, 0.1, 0.2, no]).
 
 init_agent.
 
