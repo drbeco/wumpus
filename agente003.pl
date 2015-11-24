@@ -105,16 +105,6 @@
 %       Bat:        - yes or no. When fig62, no. (default no)
 
 %world_setup([random, grid, 4, stander, 64, 1, 0.1, 0.2, no]).  % (default)
-%world_setup([random, grid, 9, stander, 10, 1, 0.3, 0.3, no]).
-%world_setup([random, grid, 1, stander, 10, 1, 0.1, 0.1, no]).  % error
-%world_setup([random, grid, 2, stander, 10, 1, 0.1, 0.2, no]). 
-%world_setup([random, grid, 10, stander, 10, 1, 0.1, 0.1, no]). % error
-%world_setup([pit3, grid, 2, stander, 10, 1, 0.1, 0.2, no]).    % error
-%world_setup([pit3, grid, 3, stander, 10, 1, 0.1, 0.2, no]).
-%world_setup([pit3, grid, 4, stander, 10, 1, 0.1, 0.2, no]).
-%world_setup([pit3, grid, 9, stander, 10, 1, 0.1, 0.2, no]).
-%world_setup([pit3, grid, 10, stander, 10, 1, 0.1, 0.2, no]).   % error
-%world_setup([pit3, dodeca, 20, stander, 100, 1, 0.1, 0.2, yes]).
 
 %world_setup([pit3, dodeca, 20, stander, 100, 1, 0.1, 0.2, no]).
 world_setup([pit3, grid, 4, stander, 64, 1, 0.1, 0.2, no]).
@@ -125,8 +115,21 @@ init_agent.
 restart_agent :- 
     init_agent.
 
+% esta e a funcao chamada pelo simulador. Nao altere a "cabeca" da funcao. Apenas o corpo.
+% Funcao recebe Percepcao, uma lista conforme descrito acima.
+% Deve retornar uma Acao, dentre as acoes validas descritas acima.
 run_agent(Percepcao, Acao) :-
-  cabeca_dura(Percepcao, Acao).
+  write('percebi: '), 
+  writeln(Percepcao),
+  acao(Percepcao, Acao). 
 
-cabeca_dura(_,goforward).
+acao([_,_,no,yes,_], turnleft) :- %vira para a esquerda sempre que bater na parede
+    writeln('acao: esquerda').
+acao([_,_,yes,_,_], grab) :- %pega o ouro se sentir o brilho
+    writeln('acao: pega').
+acao([yes,_,no,_,_], shoot):-  %atira em linha reta se sentir fedor e tiver uma flecha
+    agent_arrows(1),
+    writeln('acao: atira').
+acao(_, goforward) :- %vai pra frente caso default
+    writeln('acao: frente').
 

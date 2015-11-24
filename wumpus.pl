@@ -124,24 +124,33 @@
 % Run by hand
 %
 
-init_manual :-
+%L=[Random, Topology, Size, Move, Actions, Tries, Gold, Pit, Bat]
+manual_setup(L) :- 
+    check_setup(L), 
+    retractall(world_setup(_)),
+    assert(world_setup(L)), % [random, grid, 4, stander, 64, 1, 0.1, 0.2, no])), % default definition
+    !. 
+
+manual_init :-
     initialize(P),
-    format("~nFirst Impression: ~w~n", [P]),
+    world_setup(L),
+    format("~nWorld Setup: ~w~n", [L]),
+    format("First Impression: ~w~n", [P]),
     display_world,
     !.
 
 go :- goforward.
-goforward :- execute_manual(goforward).
+goforward :- manual_execute(goforward).
 turn :- turnright.
 turnr :- turnright.
-turnright :- execute_manual(turnright).
+turnright :- manual_execute(turnright).
 turnl :- turnleft.
-turnleft :- execute_manual(turnleft).
-grab :- execute_manual(grab).
-shoot :- execute_manual(shoot).
-climb :- execute_manual(climb).
+turnleft :- manual_execute(turnleft).
+grab :- manual_execute(grab).
+shoot :- manual_execute(shoot).
+climb :- manual_execute(climb).
 
-execute_manual(A) :-
+manual_execute(A) :-
     execute(A, P),
     format("~nAction: ~w~nPerception: ~w~n", [A, P]),
     display_world,
@@ -155,7 +164,7 @@ execute_manual(A) :-
 %   recording the score and time spent running the agent.  The total
 %   score and time are returned in Score and Time (millisecs).
 %
-%   This procedure requires the external definition of two procedures:
+%   This procedure requires the external definition of three procedures:
 %
 %     init_agent: Called after new world is initialized.  Should perform
 %                 any needed agent initialization.
@@ -163,6 +172,8 @@ execute_manual(A) :-
 %     run_agent(Percept,Action): Given the current Percept, this procedure
 %                 should return an appropriate Action, which is then
 %                 executed.
+%
+%     world_setup() % TODO - explain
 
 start :-
 	evaluate_agent(1,S), % only one trial
@@ -177,16 +188,17 @@ evaluate_agent(Trials,Score) :-
 %   calls to init_agent and run_agent.
 
 run_agent_trials(Trials,NextTrial,0) :-
-  NextTrial > Trials.
+  NextTrial > Trials,
+  !.
 
 run_agent_trials(Trials,NextTrial,Score) :-
   NextTrial =< Trials,
   format("Trial ~d~n",[NextTrial]),
-  %wumpusworld(Type,_), % types: random, fig62, pit3
   initialize(Percept),  % world and agent
   format("External init_agent...~n"),
   init_agent,           % needs to be defined externally
   display_world,
+  !,
   run_agent_action(1,Percept),
   agent_score(Score1),
   NextTrial1 is NextTrial + 1,
@@ -212,10 +224,12 @@ run_agent_action(NumActions,_) :-    % agent allowed only N actions as
 
 run_agent_action(NumActions,Percept) :-
   run_agent(Percept,Action),          % needs to be defined externally
+  check_agent_action(Action),         % check for goforward, turnright, turnleft, shoot, grab or climb.
   format("~nExternal run_agent(~w,~w)~n", [Percept, Action]),
   execute(Action,Percept1),
   display_world,
   NumActions1 is NumActions + 1,
+  !,
   run_agent_action(NumActions1,Percept1).
 
 
@@ -601,11 +615,6 @@ goforward(no) :-
   agent_orientation(Angle),
   agent_location(X,Y),
   new_location(X,Y,Angle,X1,Y1),
-  %  world_extent(E),         % check if agent off world
-  %  X1 > 0,
-  %  X1 =< E,
-  %  Y1 > 0,
-  %  Y1 =< E,
   !,
   retract(agent_location(X,Y)),   % update location
   assert(agent_location(X1,Y1)).
@@ -941,6 +950,19 @@ ww_retractall :-
     retractall(ww_initial_state(_)),
     assert(ww_initial_state([])).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% check for goforward, turnright, turnleft, shoot, grab or climb.
+check_agent_action(A) :- nonvar(A), !, check_agent_action_which(A), !.
+check_agent_action(_) :- format("Agent gave no actions!~n"), !, fail.
+check_agent_action_which(goforward).
+check_agent_action_which(turnright).
+check_agent_action_which(turnleft).
+check_agent_action_which(shoot).
+check_agent_action_which(grab).
+check_agent_action_which(climb).
+check_agent_action_which(_) :- format("Agent gave unknow action!~n"), !, fail.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % check_setup : check for user definition, or use default values
 %
 %   world_setup(Randomness, Topology, Size, Movement, Actions, Tries, Gold, Pit, Bat)
@@ -965,22 +987,22 @@ ww_retractall :-
 %get_setup([Random, Topology, Size, Move, Actions, Tries, Gold, Pit, Bat]) :-
 get_setup(Lok) :-
     world_setup(L), % user definition 
-    !, %bug: mover para baixo
-    check_setup(L, Lok). 
+    !, 
+    check_setup(L),
+    Lok=L.
 
 get_setup(Lok) :- %[Random, Topology, Size, Move, Actions, Tries, Gold, Pit, Bat]) :-
     retractall(world_setup(_)),
-    assert(world_setup([random, grid, 4, stander, 64, 1, 0.1, 0.2, no])), % default definition
-    world_setup(Lok). %[Random, Topology, Size, Move, Actions, Tries, Gold, Pit, Bat]).
+    Lok=[random, grid, 4, stander, 64, 1, 0.1, 0.2, no], %[Random, Topology, Size, Move, Actions, Tries, Gold, Pit, Bat]).
+    assert(world_setup(Lok)). % default definition
 
 % correct wrong combinations
-check_setup(Lin, Lout) :- % Randomness = fig62
+check_setup(Lin) :- % Randomness = fig62
     [fig62, grid, 4, stander, Actions, Tries, _, _, no]=Lin,
     check_setup_actions(Actions),
-    check_setup_tries(Tries),
-    Lout=Lin.
+    check_setup_tries(Tries).
 
-check_setup(Lin, Lout) :- % Randomness = random
+check_setup(Lin) :- % Randomness = random
     [random, Topology, Size, Move, Actions, Tries, Gold, Pit, Bat]=Lin,
     check_setup_topology(Topology),
     check_setup_size(random, Topology, Size),
@@ -989,10 +1011,9 @@ check_setup(Lin, Lout) :- % Randomness = random
     check_setup_tries(Tries),
     check_setup_gold(Gold),
     check_setup_pit(Pit),
-    check_setup_bat(Bat),
-    Lout=Lin.
+    check_setup_bat(Bat).
 
-check_setup(Lin, Lout) :- % Randomness = pit3
+check_setup(Lin) :- % Randomness = pit3
     [pit3, Topology, Size, Move, Actions, Tries, Gold, _, Bat]=Lin,
     check_setup_topology(Topology),
     check_setup_size(pit3, Topology, Size),
@@ -1000,8 +1021,7 @@ check_setup(Lin, Lout) :- % Randomness = pit3
     check_setup_actions(Actions),
     check_setup_tries(Tries),
     check_setup_gold(Gold),
-    check_setup_bat(Bat),
-    Lout=Lin.
+    check_setup_bat(Bat).
 
 check_setup_topology(grid). check_setup_topology(dodeca). % Topology (grid, dodecahedron)
 check_setup_size(random, grid, Size) :- Size>=2, Size=<9.
