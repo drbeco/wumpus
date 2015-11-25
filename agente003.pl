@@ -81,7 +81,12 @@
 % e faca a consulta (query) na forma:
 % ?- start.
 
-:- load_files([wumpus]).
+
+%:- module(agente003, [wumpusworld/2, init_agent/0, restart_agent/0, run_agent/2]).  % errado: agente nao eh modulo
+%:- load_files([wumpus]).  % tanto faz load_files ou use_module
+
+:- use_module(wumpus, [start/0]). % agente usa modulo simulador
+ 
 
 % world_setup([Random, Topology, Size, Move, Actions, Tries, Gold, Pit, Bat]).
 %
@@ -107,13 +112,15 @@
 %world_setup([random, grid, 4, stander, 64, 1, 0.1, 0.2, no]).  % (default)
 
 %world_setup([pit3, dodeca, 20, stander, 100, 1, 0.1, 0.2, no]).
-world_setup([pit3, grid, 4, stander, 64, 1, 0.1, 0.2, no]).
+%world_setup([pit3, grid, 5, stander, 64, 1, 0.1, 0.2, no]).
 
-init_agent.
+init_agent :-
+    retractall(flecha(_)),
+    assert(flecha(1)).
 
-% esta funcao permanece a mesma. Nao altere.
-restart_agent :- 
-    init_agent.
+% Funcao a implementar.
+%restart_agent :-
+%    init_agent.
 
 % esta e a funcao chamada pelo simulador. Nao altere a "cabeca" da funcao. Apenas o corpo.
 % Funcao recebe Percepcao, uma lista conforme descrito acima.
@@ -121,6 +128,7 @@ restart_agent :-
 run_agent(Percepcao, Acao) :-
   write('percebi: '), 
   writeln(Percepcao),
+  wumpus:agent_arrows(1),
   acao(Percepcao, Acao). 
 
 acao([_,_,no,yes,_], turnleft) :- %vira para a esquerda sempre que bater na parede
@@ -128,7 +136,7 @@ acao([_,_,no,yes,_], turnleft) :- %vira para a esquerda sempre que bater na pare
 acao([_,_,yes,_,_], grab) :- %pega o ouro se sentir o brilho
     writeln('acao: pega').
 acao([yes,_,no,_,_], shoot):-  %atira em linha reta se sentir fedor e tiver uma flecha
-    agent_arrows(1),
+    flecha(1),
     writeln('acao: atira').
 acao(_, goforward) :- %vai pra frente caso default
     writeln('acao: frente').

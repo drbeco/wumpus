@@ -99,8 +99,11 @@
 % -500 for dying
 %
 
+% Protect all predicates (make private), except the ones listed bellow:
+:- module(wumpus, [start/0, manual_setup/1, manual_init/0, go/0, goforward/0, turnright/0, turn/0, turnr/0, turnleft/0, turnl/0, grab/0, shoot/0, climb/0]).
+
 :- dynamic([
-    world_setup/1,          % extern world setup
+    get_setup/1,            % get world setup (from world_setup or from default setup)
     world_extent/1,         % ww World extent size
     wumpus_location/2,      % ww Wumpus location: (X,Y) on grid; (CaveNumber,Level) on dodeca;
     wumpus_health/1,        % ww Wumpus health: alive/dead
@@ -127,13 +130,13 @@
 %L=[Random, Topology, Size, Move, Actions, Tries, Gold, Pit, Bat]
 manual_setup(L) :- 
     check_setup(L), 
-    retractall(world_setup(_)),
-    assert(world_setup(L)), % [random, grid, 4, stander, 64, 1, 0.1, 0.2, no])), % default definition
+    retractall(get_setup(_)),
+    assert(get_setup(L)), % [random, grid, 4, stander, 64, 1, 0.1, 0.2, no])), % default definition
     !. 
 
 manual_init :-
-    initialize(P),
-    world_setup(L),
+    initialize(P), % also sets get_setup to default in case of no manual_setup
+    get_setup(L),
     format("~nWorld Setup: ~w~n", [L]),
     format("First Impression: ~w~n", [P]),
     display_world,
@@ -261,6 +264,7 @@ restart([Stench,no,no,no,no]) :-
 % initialize_world: gather information
 initialize_world :-
     ww_retractall, %retract wumpus, gold and pit
+    assert_setup, % assert user or default setup
     get_setup(L), %[Random, Topology, Size, Move, Actions, Tries, Gold, Pit, Bat]), 
     %L=[Random, Topology, Size, Move, Actions, Tries, Gold, Pit, Bat],
     L=[_, _, Size, Move, Actions, Tries, Gold, Pit, Bat],
@@ -349,7 +353,7 @@ initialize_world([random,grid,E,_,_,_,PG,PP,_]) :-
     assert_list(L).
 
 initialize_world(_) :- % default
-    writeln('Error, world_setup not implemented yet! Sorry about that.'),
+    writeln('Error, this world setup combination is not implemented yet! Sorry about that.'),
     !, fail.
     %halt(1). % error 1
 
@@ -567,7 +571,7 @@ breeze(no).
 
 % F is wumpus_location(X,Y) or pit(X,Y).
 is_adjacent(X, Y, F) :-
-    world_setup([_,Top|_]),
+    get_setup([_,Top|_]),
     is_adjacent_top(X, Y, F, Top).
 
 is_adjacent_top(X, Y, F, grid) :-
@@ -626,7 +630,7 @@ goforward(yes).     % Ran into wall, Bump = yes
 %   after moving from X,Y along Orientation: 0, 90, 180, 270 degrees.
 
 new_location(X, Y, A, X1, Y1) :-
-    world_setup([_,Top,E|_]),
+    get_setup([_,Top,E|_]),
     new_location_top(X, Y, A, X1, Y1, Top, E).
 
 new_location_top(X, Y, 0, X1, Y, grid, E) :-
@@ -745,7 +749,7 @@ shoot_arrow(no).
 %   you missed.
 
 propagate_arrow(X,Y,A,S) :-
-    world_setup([_,Top,E|_]),
+    get_setup([_,Top,E|_]),
     propagate_arrow_top(X, Y, A, S, Top, E).
 
 propagate_arrow_top(X,Y,_,yes,_,_) :-
@@ -853,7 +857,7 @@ display_world :-
     format('agent_gold(~d)~n',[G]).
 
 display_board :-
-    world_setup([_,grid,E|_]),
+    get_setup([_,grid,E|_]),
     display_rows(E, E).
 
 display_board.
@@ -985,16 +989,20 @@ check_agent_action_which(_) :- format("Agent gave unknow action!~n"), !, fail.
 %       Bat:        - yes or no. When fig62, no. (default no)
 
 %get_setup([Random, Topology, Size, Move, Actions, Tries, Gold, Pit, Bat]) :-
-get_setup(Lok) :-
+assert_setup :-
+    current_predicate(world_setup, world_setup(_)),
     world_setup(L), % user definition 
     !, 
     check_setup(L),
-    Lok=L.
+    retractall(get_setup(_)),
+    assert(get_setup(L)).
 
-get_setup(Lok) :- %[Random, Topology, Size, Move, Actions, Tries, Gold, Pit, Bat]) :-
-    retractall(world_setup(_)),
-    Lok=[random, grid, 4, stander, 64, 1, 0.1, 0.2, no], %[Random, Topology, Size, Move, Actions, Tries, Gold, Pit, Bat]).
-    assert(world_setup(Lok)). % default definition
+assert_setup :-
+    current_predicate(get_setup, get_setup(_)). % case manual_setup asserted
+
+assert_setup :-
+    retractall(get_setup(_)),
+    assert(get_setup([random, grid, 4, stander, 64, 1, 0.1, 0.2, no])). % default
 
 % correct wrong combinations
 check_setup(Lin) :- % Randomness = fig62
