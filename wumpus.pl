@@ -100,7 +100,20 @@
 %
 
 % Protect all predicates (make private), except the ones listed bellow:
-:- module(wumpus, [start/0, manual_setup/1, manual_init/0, go/0, goforward/0, turnright/0, turn/0, turnr/0, turnleft/0, turnl/0, grab/0, shoot/0, climb/0]).
+:- module(wumpus,   % module name WUMPUS
+    [start/0,       % start an automatic agent
+    manual_setup/1, % manually configure the world
+    manual_init/0,  % manually initialize the world
+    go/0,           % shortcut for goforward
+    goforward/0,    % manually moves the agent forward
+    turnright/0,    % manually turns to right / clockwise
+    turn/0,         % shortcut for turnright
+    turnr/0,        % shortcut for turnright
+    turnleft/0,     % manually turns to left / anti-clockwise
+    turnl/0,        % shortcut for turnleft
+    grab/0,         % manually grabs something (gold, arrow, ...)
+    shoot/0,        % manually shoots an arrow
+    climb/0]).      % manually climbs out the cave
 
 :- dynamic([
     get_setup/1,            % get world setup (from world_setup or from default setup)
@@ -118,7 +131,7 @@
     agent_score/1,          % ww Game Score
     gold_probability/1,     % ww Probability that a location has gold (default 0.10)
     pit_probability/1,      % ww Probability that a non-(1,1) location has a pit (default 0.20)
-    max_agent_tries/1,      % ww Maximum agent tries (climb or die) per world (default 1)
+    max_agent_lifes/1,      % ww Maximum agent tries (climb or die) per world (default 1)
     max_agent_actions/1,    % ww Maximum actions per trial allowed by agent (default 64)
     ww_initial_state/1      % list of ww configuration values
   ]).
@@ -128,10 +141,10 @@
 %
 
 %L=[Random, Topology, Size, Move, Actions, Tries, Gold, Pit, Bat]
-manual_setup(L) :- 
-    check_setup(L), 
+manual_setup(L0) :- 
+    check_setup(L0, L1), 
     retractall(get_setup(_)),
-    assert(get_setup(L)), % [random, grid, 4, stander, 64, 1, 0.1, 0.2, no])), % default definition
+    assert(get_setup(L1)), % [random, grid, 4, stander, 64, 1, 0.1, 0.2, no])), % default definition
     !. 
 
 manual_init :-
@@ -235,6 +248,9 @@ run_agent_action(NumActions,Percept) :-
   !,
   run_agent_action(NumActions1,Percept1).
 
+run_agent_action(_,Percept) :-
+    format("External function run_agent(~w, Nop) failed miserably!~n", [Percept]),
+    !, fail.
 
 % initialize(World,Percept): initializes the Wumpus world and our fearless
 %   agent according to the given World and returns the Percept from square
@@ -265,17 +281,17 @@ restart([Stench,no,no,no,no]) :-
 initialize_world :-
     ww_retractall, %retract wumpus, gold and pit
     assert_setup, % assert user or default setup
-    get_setup(L), %[Random, Topology, Size, Move, Actions, Tries, Gold, Pit, Bat]), 
-    %L=[Random, Topology, Size, Move, Actions, Tries, Gold, Pit, Bat],
-    L=[_, _, Size, Move, Actions, Tries, Gold, Pit, Bat],
+    get_setup(L), %[Size, Type, Move, Gold, Pit, Bat]), 
+    L=[Size, _, Move, Gold, Pit, Bat],
     addto_ww_init_state(world_extent(Size)),
     addto_ww_init_state(wumpus_orientation(0)),
     addto_ww_init_state(wumpus_health(alive)),
     addto_ww_init_state(wumpus_last_action(nil)),
-    addto_ww_init_state(bats(Bat)),                  % Is there bats? yes/no
-    addto_ww_init_state(pit_probability(Pit)),       % Probability that a non-(1,1) location has a pit
     addto_ww_init_state(gold_probability(Gold)),     % Probability that a location has gold
-    addto_ww_init_state(max_agent_tries(Tries)),     % Maximum agent tries (climb or die) per world
+    addto_ww_init_state(pit_probability(Pit)),       % Probability that a non-(1,1) location has a pit
+    addto_ww_init_state(bat_probability(Bat)),       % Probability that a location has bats
+    addto_ww_init_state(max_agent_lifes(1)),         % Maximum agent lifes (climb or die) per world
+    Actions is Size * Size * 4,                      % 4 actions per square average (fig62 is 2.875 moves per square)
     addto_ww_init_state(max_agent_actions(Actions)), % Maximum actions per trial allowed by agent
     addto_ww_init_state(wumpus_move(Move)),          % Wumpus move style
     initialize_world(L).
@@ -290,7 +306,8 @@ initialize_world :-
 % gold(X,Y): there is gold in square X,Y
 % pit(X,Y): there is a pit in square X,Y
 
-initialize_world([fig62,grid,4,_,_,_,_,_,no]) :-
+initialize_world([_,fig62,_,_,_,_]) :-
+    %get_setup(L), %[Size, Type, Move, Gold, Pit, Bat]), 
     addto_ww_init_state(wumpus_location(1,3)), % wumpus location
     addto_ww_init_state(gold(2,3)), % gold position
     addto_ww_init_state(pit(3,1)),  % pit 1 
@@ -299,63 +316,71 @@ initialize_world([fig62,grid,4,_,_,_,_,_,no]) :-
     ww_initial_state(L),
     assert_list(L).
 
-initialize_world([pit3,grid,E,_,_,_,_,_,_]) :-
-    all_squares(grid, E, AllSqrs),
-    delete(AllSqrs, [1,1], AllSqrs1),  % all squares but [1,1]
-    subtract(AllSqrs1, [[1,2],[2,1]], AllSqrs3), % all squares but [1,1],[2,1],[1,2]
-    random_member([GX,GY], AllSqrs1),  % gold position (only one), not in [1,1]
-    addto_ww_init_state(gold(GX,GY)),
-    random_member([PX1,PY1], AllSqrs3),
-    delete(AllSqrs3, [PX1, PY1], Pit1Sqrs),
-    random_member([PX2,PY2], Pit1Sqrs),
-    delete(Pit1Sqrs, [PX2, PY2], Pit2Sqrs),
-    random_member([PX3,PY3], Pit2Sqrs),
-    addto_ww_init_state(pit(PX1,PY1)), % pit 1
-    addto_ww_init_state(pit(PX2,PY2)), % pit 2
-    addto_ww_init_state(pit(PX3,PY3)), % pit 3
-    random_member([WX,WY],AllSqrs1),   % initialize wumpus (not [1,1])
-    addto_ww_init_state(wumpus_location(WX,WY)),
-    ww_initial_state(L),
-    assert_list(L).
-
-initialize_world([pit3,dodeca,E,_,_,_,_,_,_]) :-
-    all_squares(dodeca, E, AllSqrs),
-    delete(AllSqrs, [1,1], AllSqrs1),  % all squares but [1,1]
-    subtract(AllSqrs1, [[2,2],[5,2],[6,2]], AllSqrs4), % all squares but [2,2],[5,2],[6,2]
-    random_member([GX,GY], AllSqrs1),  % gold position (only one), not in [1,1]
-    addto_ww_init_state(gold(GX,GY)),
-    random_member([PX1,PY1], AllSqrs4),
-    delete(AllSqrs4, [PX1, PY1], Pit1Sqrs),
-    random_member([PX2,PY2], Pit1Sqrs),
-    delete(Pit1Sqrs, [PX2, PY2], Pit2Sqrs),
-    random_member([PX3,PY3], Pit2Sqrs),
-    addto_ww_init_state(pit(PX1,PY1)), % pit 1
-    addto_ww_init_state(pit(PX2,PY2)), % pit 2
-    addto_ww_init_state(pit(PX3,PY3)), % pit 3
-    random_member([WX,WY],AllSqrs4),   % initialize wumpus (not [1,1],[2,2],[5,2],[6,2])
-    addto_ww_init_state(wumpus_location(WX,WY)),
-    ww_initial_state(L),
-    assert_list(L).
-
-initialize_world([random,grid,E,_,_,_,PG,PP,_]) :-
-    all_squares(grid, E, AllSqrs),% E = size extension, random, range [2, 9]
-    delete(AllSqrs, [1,1], AllSqrs1), % all squares but [1,1]
-    subtract(AllSqrs1, [[1,2],[2,1]], AllSqrs3), % all squares but [1,1],[2,1],[1,2]
-    place_objects(gold,PG,AllSqrs1), % place gold (not [1,1])
-    at_least_one_gold(grid, E),
-    place_objects(pit,PP,AllSqrs3),   % AllSqrs3
-    random_member([WX,WY],AllSqrs1),  % initialize wumpus (not [1,1])
-    addto_ww_init_state(wumpus_location(WX,WY)),
+initialize_world([E, Type, _, PG, PP, PB]) :-
+    %all_squares(grid, E, AllSqrs),% E = size extension, random, range [2, 9]
+    %delete(AllSqrs, [1,1], AllSqrs1), % all squares but [1,1]
+    %subtract(AllSqrs1, [[1,2],[2,1]], AllSqrs3), % all squares but [1,1],[2,1],[1,2]
+    gold_squares(E, Type, GS),
+    hazard_squares(E, Type, HS),
+    place_it(gold, PG, GS), % place gold (not [1,1])
+    %at_least_one_gold(grid, E),
+    place_it(pit, PP, HS),   % AllSqrs3
+    place_it(bat, PB, HS),   % place some bats not near the entrance
+    place_it(wumpus_location, 1, GS), % initialize wumpus (not [1,1])
+    %random_member([WX,WY], GS),  % initialize wumpus (not [1,1])
+    %addto_ww_init_state(wumpus_location(WX,WY)),
     %   wumpus_movement_rules(Rules),
     %   random_member(Rule,Rules),
     %   addto_ww_init_state(wumpus_movement_rule(Rule)),
     ww_initial_state(L),
     assert_list(L).
 
-initialize_world(_) :- % default
-    writeln('Error, this world setup combination is not implemented yet! Sorry about that.'),
-    !, fail.
-    %halt(1). % error 1
+%initialize_world([pit3,grid,E,_,_,_,_,_,_]) :-
+%initialize_world([E, grid, _, PG, PP, PB]) :-
+    %gold_squares(grid, GSqrs),
+    %hazard_squares(grid, HSqrs),
+    %
+    %random_member([GX,GY], AllSqrs1),  % gold position (only one), not in [1,1]
+    %addto_ww_init_state(gold(GX,GY)),
+    %random_member([PX1,PY1], AllSqrs3),
+    %delete(AllSqrs3, [PX1, PY1], Pit1Sqrs),
+    %random_member([PX2,PY2], Pit1Sqrs),
+    %delete(Pit1Sqrs, [PX2, PY2], Pit2Sqrs),
+    %random_member([PX3,PY3], Pit2Sqrs),
+    %addto_ww_init_state(pit(PX1,PY1)), % pit 1
+    %addto_ww_init_state(pit(PX2,PY2)), % pit 2
+    %addto_ww_init_state(pit(PX3,PY3)), % pit 3
+    %random_member([WX,WY],AllSqrs1),   % initialize wumpus (not [1,1])
+    %addto_ww_init_state(wumpus_location(WX,WY)),
+    %ww_initial_state(L),
+    %assert_list(L).
+    
+
+
+%initialize_world([pit3,dodeca,E,_,_,_,_,_,_]) :-
+    %all_squares(dodeca, E, AllSqrs),
+    %delete(AllSqrs, [1,1], AllSqrs1),  % all squares but [1,1]
+    %subtract(AllSqrs1, [[2,2],[5,2],[6,2]], AllSqrs4), % all squares but [2,2],[5,2],[6,2]
+    %random_member([GX,GY], AllSqrs1),  % gold position (only one), not in [1,1]
+    %addto_ww_init_state(gold(GX,GY)),
+    %random_member([PX1,PY1], AllSqrs4),
+    %delete(AllSqrs4, [PX1, PY1], Pit1Sqrs),
+    %random_member([PX2,PY2], Pit1Sqrs),
+    %delete(Pit1Sqrs, [PX2, PY2], Pit2Sqrs),
+    %random_member([PX3,PY3], Pit2Sqrs),
+    %addto_ww_init_state(pit(PX1,PY1)), % pit 1
+    %addto_ww_init_state(pit(PX2,PY2)), % pit 2
+    %addto_ww_init_state(pit(PX3,PY3)), % pit 3
+    %random_member([WX,WY],AllSqrs4),   % initialize wumpus (not [1,1],[2,2],[5,2],[6,2])
+    %addto_ww_init_state(wumpus_location(WX,WY)),
+    %ww_initial_state(L),
+    %assert_list(L).
+
+% No need, setup checked
+%initialize_world(_) :- % default
+%    writeln('Error, this world setup combination is not implemented yet! Sorry about that.'),
+%    !, fail.
+%    %halt(1). % error 1
 
 % initialize_agent: agent is initially alive, destitute (except for one
 %   arrow), in grid 1,1 and facing to the right (0 degrees).
@@ -384,6 +409,22 @@ initialize_agent :-
 
 %initialize_agent(dodeca) :-
 %   assert(agent_location(1,0)).
+
+gold_squares(E, grid, GS) :-
+    all_squares(grid, E, All),
+    delete(All, [1,1], GS).  % all squares but [1,1]
+
+gold_squared(E, dodeca, GS) :-
+    all_squares(dodeca, E, All),
+    delete(All, [1,1], GS).  % all squares but [1,1]
+
+hazard_squares(E, grid, HS) :-
+    gold_squares(E, grid, GS),
+    subtract(GS, [[1,2],[2,1]], HS). % all squares but [1,1],[2,1],[1,2]
+
+hazard_squares(E, dodeca, HS) :-
+    gold_squares(E, dodeca, GS), % all squares but [1,1] 
+    subtract(GS, [[2,2],[5,2],[6,2]], HS). % all squares but [2,2],[5,2],[6,2]
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -422,31 +463,69 @@ all_squares_1(Extent,Row,Col,[[Row,Col]|RestSqrs]) :-
 % place_objects(Object,P,Squares): For each square in Squares, place
 %   Object at square with probability P.
 
-place_objects(_, _, []).
+place_it(_, _, []).
 
-place_objects(Object, P, [Sq|Squares]) :-
+place_it(gold, Qt, Sq) :-
+    float(Qt),
+    place_objects_det(gold, 1, Sq),   % put one for sure
+    place_objects_prob(gold, Qt, Sq). % and lets see how many others
+    %ww_initial_state(L),
+    %member(gold(_,_),L),
+    %!.
+
+%at_least_one_gold(_,_).
+%place_it(gold, Qt, Sq) :-
+%    float(Qt),
+%    place_objects_det(gold, 1, Sq).
+
+place_it(Ob, Qt, Sq) :-
+    float(Qt),
+    place_objects_prob(Ob, Qt, Sq).
+
+place_it(Ob, Qt, Sq) :-
+    integer(Qt),
+    place_objects_det(Ob, Qt, Sq).
+
+place_objects_prob(_, _, []).
+
+place_objects_prob(Object, P, [Sq|Squares]) :-
   maybe(P),   % succeeds with probability P
   !,
   Fact =.. [Object|Sq], % Fact = pit(X,Y)
   addto_ww_init_state(Fact),
-  place_objects(Object, P, Squares).
+  place_objects_prob(Object, P, Squares).
 
-place_objects(Object, P, [_|Squares]) :-
-  place_objects(Object, P, Squares).
+place_objects_prob(Object, P, [_|Squares]) :-
+  place_objects_prob(Object, P, Squares).
+
+place_objects_det(_, _, []).
+
+place_objects_det(_, 0, [_|_]).
+
+place_objects_det(Obj, Qtd, [H|T]) :-
+    Qtd>0,
+    random_member(Sq, [H|T]),
+    delete([H|T], Sq, S1),
+    Fact =.. [Obj | Sq], % Fact = pit(X,Y)
+    addto_ww_init_state(Fact),
+    Q1 is Qtd - 1,
+    place_objects_det(Obj, Q1, S1).
+
 
 % at_least_one_gold(Topology, Extent): Ensures that at least on gold piece is
 %   somewhere in the wumpus world.
 
-at_least_one_gold(_,_) :-
-  ww_initial_state(L),
-  member(gold(_,_),L),
-  !.
+%at_least_one_gold(_,_) :-
+%  ww_initial_state(L),
+%  member(gold(_,_),L),
+%  !.
 
-at_least_one_gold(Top, Ext) :-
-    all_squares(Top, Ext, AllSqrs),
-    delete(AllSqrs, [1,1], AllSqrs1), % all but [1,1]
-    random_member([GX,GY], AllSqrs1),
-    addto_ww_init_state(gold(GX,GY)).  
+%at_least_one_gold(Top, Ext) :-
+%    gold_squares(Top, GS)
+%    all_squares(Top, Ext, AllSqrs),
+%    delete(AllSqrs, [1,1], AllSqrs1), % all but [1,1]
+%    random_member([GX,GY], AllSqrs1),
+%    addto_ww_init_state(gold(GX,GY)).  
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % execute(Action,Percept): executes Action and returns Percept
@@ -571,10 +650,11 @@ breeze(no).
 
 % F is wumpus_location(X,Y) or pit(X,Y).
 is_adjacent(X, Y, F) :-
-    get_setup([_,Top|_]),
-    is_adjacent_top(X, Y, F, Top).
+    get_setup([_,Type|_]),
+    is_adjacent_type(X, Y, F, Type).
 
-is_adjacent_top(X, Y, F, grid) :-
+is_adjacent_type(X, Y, F, Type) :-
+    (Type == grid ; Type == fig62),
     X1 is X + 1,
     X0 is X - 1,
     Y1 is Y + 1,
@@ -630,26 +710,30 @@ goforward(yes).     % Ran into wall, Bump = yes
 %   after moving from X,Y along Orientation: 0, 90, 180, 270 degrees.
 
 new_location(X, Y, A, X1, Y1) :-
-    get_setup([_,Top,E|_]),
-    new_location_top(X, Y, A, X1, Y1, Top, E).
+    get_setup([E,Type|_]),
+    new_location_type(X, Y, A, X1, Y1, Type, E).
 
-new_location_top(X, Y, 0, X1, Y, grid, E) :-
+new_location_type(X, Y, 0, X1, Y, Type, E) :-
+    (Type == grid ; Type == fig62),
     X1 is X + 1,
     X1 =< E.
 
-new_location_top(X, Y, 90, X, Y1, grid, E) :-
+new_location_type(X, Y, 90, X, Y1, Type, E) :-
+    (Type == grid ; Type == fig62),
     Y1 is Y + 1,
     Y1 =< E.
 
-new_location_top(X, Y, 180, X1, Y, grid, _) :-
+new_location_type(X, Y, 180, X1, Y, Type, _) :-
+    (Type == grid ; Type == fig62),
     X1 is X - 1,
     X1 > 0.
 
-new_location_top(X, Y, 270, X, Y1, grid, _) :-
+new_location_type(X, Y, 270, X, Y1, Type, _) :-
+    (Type == grid ; Type == fig62),
     Y1 is Y - 1,
     Y1 > 0.
 
-new_location_top(X, _, 0, X1, Y1, dodeca, _) :-
+new_location_type(X, _, 0, X1, Y1, dodeca, _) :-
     dodeca_map(L),
     member([X,[_, _, C3, _]], L),
     C3 =\= 0, % East valid
@@ -657,7 +741,7 @@ new_location_top(X, _, 0, X1, Y1, dodeca, _) :-
     all_squares(dodeca, 20, S),
     member([X1, Y1], S).
 
-new_location_top(X, _, 90, X1, Y1, dodeca, _) :-
+new_location_type(X, _, 90, X1, Y1, dodeca, _) :-
     dodeca_map(L),
     member([X,[C1, _, _, _]], L),
     C1 =\= 0, % North valid
@@ -665,7 +749,7 @@ new_location_top(X, _, 90, X1, Y1, dodeca, _) :-
     all_squares(dodeca, 20, S),
     member([X1, Y1], S).
 
-new_location_top(X, _, 180, X1, Y1, dodeca, _) :-
+new_location_type(X, _, 180, X1, Y1, dodeca, _) :-
     dodeca_map(L),
     member([X,[_, _, _, C4]], L),
     C4 =\= 0, % West valid
@@ -673,7 +757,7 @@ new_location_top(X, _, 180, X1, Y1, dodeca, _) :-
     all_squares(dodeca, 20, S),
     member([X1, Y1], S).
 
-new_location_top(X, _, 270, X1, Y1, dodeca, _) :-
+new_location_type(X, _, 270, X1, Y1, dodeca, _) :-
     dodeca_map(L),
     member([X,[_, C2, _, _]], L),
     C2 =\= 0, % South valid
@@ -749,7 +833,7 @@ shoot_arrow(no).
 %   you missed.
 
 propagate_arrow(X,Y,A,S) :-
-    get_setup([_,Top,E|_]),
+    get_setup([E,Top|_]),
     propagate_arrow_top(X, Y, A, S, Top, E).
 
 propagate_arrow_top(X,Y,_,yes,_,_) :-
@@ -857,7 +941,8 @@ display_world :-
     format('agent_gold(~d)~n',[G]).
 
 display_board :-
-    get_setup([_,grid,E|_]),
+    get_setup([E,Type|_]),
+    (Type == grid ; Type == fig62),
     display_rows(E, E).
 
 display_board.
@@ -920,7 +1005,8 @@ maybe :- maybe(0.5).
 
 addto_ww_init_state(Fact) :-
   retract(ww_initial_state(L)),
-  assert(ww_initial_state([Fact|L])).
+  list_to_set([Fact|L],S), % avoid duplicates
+  assert(ww_initial_state(S)).
 
 %assert_once(Fact):-
 %    \+( Fact ), !,
@@ -948,7 +1034,7 @@ ww_retractall :-
     retractall(bats(_)),
     retractall(pit_probability(_)),
     retractall(gold_probability(_)),
-    retractall(max_agent_tries(_)), 
+    retractall(max_agent_lifes(_)), 
     retractall(max_agent_actions(_)),
     retractall(wumpus_move(_)),
     retractall(ww_initial_state(_)),
@@ -987,59 +1073,128 @@ check_agent_action_which(_) :- format("Agent gave unknow action!~n"), !, fail.
 %       Gold:       - Gold probability per square. When fig62 or pit3, only one gold. (default 0.1)
 %       Pit:        - Pit probability per square. When fig62 or pit3, only 3 pits. (default 0.2)
 %       Bat:        - yes or no. When fig62, no. (default no)
+% old [random, Topology, Size, Move, Actions, Tries, Gold, Pit, Bat]=Lin,
 
-%get_setup([Random, Topology, Size, Move, Actions, Tries, Gold, Pit, Bat]) :-
+% New configuration:
+% world_setup
+%    1.   Size: 2..20, with some constrictions: [2-9] grid; 20, dodeca; 4, fig62
+%    2.   Type: fig62, grid or dodeca
+%    3.   Move: stander, walker, runner (wumpus movement)
+%    4.   Gold: Integer is deterministic number, float from 0.0<G<1.0 is probabilistic
+%    5.   Pits: Idem, 0 is no pits.
+%    6.   Bats: Idem, 0 is no bats.
+%
+%       Actions: 2..400, agent actions allowed (not in this version. Now its 4 actions per square))
+%       Tries: fixed at 1 now (for future versions)
+
+
+% example: world_setup([5, grid, stander, 1, 3, 1]). % size 5, 1 gold, 3 pits and 1 bat
+% world_setup([4, grid, stander, 0.1, 0.2, 0.1])). % default
+
+%get_setup([Size, Type, Move, Gold, Pit, Bat]) 
 assert_setup :-
     current_predicate(world_setup, world_setup(_)),
-    world_setup(L), % user definition 
-    !, 
-    check_setup(L),
+    world_setup(Lin), % user definition 
+    check_setup(Lin, Lout),
+    !,
+    format("User defined setup: Size=~w, Type=~w, Move=~w, Gold=~w, Pit=~w, Bat=~w~n", Lout),
     retractall(get_setup(_)),
-    assert(get_setup(L)).
+    assert(get_setup(Lout)).
 
 assert_setup :-
-    current_predicate(get_setup, get_setup(_)). % case manual_setup asserted
+    current_predicate(get_setup, get_setup(_)), % case manual_setup asserted
+    get_setup(Lout),
+    !,
+    format("Reusing setup: Size=~w, Type=~w, Move=~w, Gold=~w, Pit=~w, Bat=~w~n", Lout).
 
 assert_setup :-
+    Lout=[4, grid, stander, 0.1, 0.2, 0.1], % defaulf
+    format("Default setup: Size=~w, Type=~w, Move=~w, Gold=~w, Pit=~w, Bat=~w~n", Lout),
     retractall(get_setup(_)),
-    assert(get_setup([random, grid, 4, stander, 64, 1, 0.1, 0.2, no])). % default
+    assert(get_setup(Lout)). % default
+    %assert(get_setup([random, grid, 4, stander, 64, 1, 0.1, 0.2, no])). % old default
 
 % correct wrong combinations
-check_setup(Lin) :- % Randomness = fig62
-    [fig62, grid, 4, stander, Actions, Tries, _, _, no]=Lin,
-    check_setup_actions(Actions),
-    check_setup_tries(Tries).
+% [Size, Type, Move, Gold, Pit, Bat]) 
+% fig62
+check_setup([_, fig62|_], [4, fig62, stander, 1, 3, 0]). % Size 4, fig62, wumpus standing still, 1 gold, 3 pits, no bats 
+    %[_, fig62, _, _, _, _]=Lin,
+    %check_setup_actions(Actions),
+    %check_setup_tries(Tries).
 
-check_setup(Lin) :- % Randomness = random
-    [random, Topology, Size, Move, Actions, Tries, Gold, Pit, Bat]=Lin,
-    check_setup_topology(Topology),
-    check_setup_size(random, Topology, Size),
-    check_setup_move(Move),
-    check_setup_actions(Actions),
-    check_setup_tries(Tries),
-    check_setup_gold(Gold),
-    check_setup_pit(Pit),
-    check_setup_bat(Bat).
+% grid
+check_setup([Size, grid, Move, Gold, Pit, Bat], [S1, grid, M1, G1, P1, B1]) :-
+    %[Size, grid, Move, Gold, Pit, Bat]=Lin,
+    %check_setup_topology(Topology),
+    check_setup_size(grid, Size, S1), 
+    check_setup_move(Move, M1),
+    %check_setup_actions(Actions),
+    %check_setup_lifes(Lifes),
+    check_setup_gold(Gold, S1, G1),
+    %check_setup_pit(Pit, P1),
+    %check_setup_bat(Bat, B1),
+    check_setup_hazard(Pit, S1, P1), % Qtd pits, size, Qtd Pits validated
+    check_setup_hazard(Bat, S1, B1).
 
-check_setup(Lin) :- % Randomness = pit3
-    [pit3, Topology, Size, Move, Actions, Tries, Gold, _, Bat]=Lin,
-    check_setup_topology(Topology),
-    check_setup_size(pit3, Topology, Size),
-    check_setup_move(Move),
-    check_setup_actions(Actions),
-    check_setup_tries(Tries),
-    check_setup_gold(Gold),
-    check_setup_bat(Bat).
+% dodeca
+check_setup([_, dodeca, Move, Gold, Pit, Bat], [S1, dodeca, M1, G1, P1, B1]) :-
+    %[pit3, Topology, Size, Move, Actions, Tries, Gold, _, Bat]=Lin,
+    %check_setup_topology(Topology),
+    check_setup_size(dodeca, 20, S1), 
+    check_setup_move(Move, M1),
+    %check_setup_actions(Actions),
+    %check_setup_lifes(Lifes),
+    check_setup_gold(Gold, S1, G1),
+    %check_setup_pit(Pit, P1),
+    %check_setup_bat(Bat, B1),
+    check_setup_hazard(Pit, S1, P1),
+    check_setup_hazard(Bat, S1, B1). % BUG conferir
 
-check_setup_topology(grid). check_setup_topology(dodeca). % Topology (grid, dodecahedron)
-check_setup_size(random, grid, Size) :- Size>=2, Size=<9.
-check_setup_size(pit3, grid, Size) :- Size>=3, Size=<9.
-check_setup_size(_, dodeca, 20).
-check_setup_move(stander). check_setup_move(walker). check_setup_move(runner). % Types of Wumpus Movement (stander, walker, runner)
-check_setup_actions(A) :- A>=2, A=<400. % Maximum agent actions 2<=A<=400
-check_setup_tries(1).  %check_setup_tries(T) :- T>=1, T=<10. % Trials per experiment 1<=T<=10
-check_setup_gold(P) :- check_setup_prob(P). % Gold Probability P
-check_setup_pit(P) :- check_setup_prob(P).  % Pit Probability P
+
+% check_setup_topology(grid). check_setup_topology(dodeca). % Topology (grid, dodecahedron)
+% Map size (or extension)
+check_setup_size(grid, S0, S0) :- S0>=2, S0=<9.
+check_setup_size(grid, _, 4).
+check_setup_size(dodeca, _, 20). 
+% Types of Wumpus Movement 
+check_setup_move(walker, walker).
+check_setup_move(runner, runner).
+check_setup_move(_, stander).
+
+%check_setup_actions(A) :- A>=2, A=<400. % Maximum agent actions 2<=A<=400
+%check_setup_lifes(1).  %check_setup_lifes(T) :- T>=1, T=<5. % Lifes per labirinth
+% Gold, Pit and Bat : integer, fixed number; float, probability
+check_setup_gold(G0, _, G0) :- 
+    float(G0), 
+    check_setup_prob(G0). % Gold Probability P
+
+check_setup_gold(G0, S1, G0) :- 
+    integer(G0),
+    G0>=0,
+    MX is S1 * S1 - 1,
+    G0=<MX.
+
+check_setup_gold(_, _, 1). % default, one piece of gold
+
+%check_setup_pit(P0, S1, P1) :-
+%    float(P0),
+%    check_setup_prob(P0),  % Pit Probability P
+%    P1=P0.
+
+check_setup_hazard(H0, _, H0) :-
+    float(H0),
+    check_setup_prob(H0).
+
+check_setup_hazard(H0, S1, H0) :-
+    integer(H0),
+    H0>=0,
+    MX is S1 * S1 - 3,
+    H0=<MX.
+
+check_setup_hazard(_, 2, 1). % Default 1 hazard, size = 2x2
+
+check_setup_hazard(_, _, 2). % Default 2 hazards, size >= 3x3
+
 check_setup_prob(P) :- P>0.0, P<1.0.        % Probability 0.0<P<1.0
-check_setup_bat(B) :- (B = no ; B = yes).   % Bats yes/no
+
 
