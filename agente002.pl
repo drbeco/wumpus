@@ -43,26 +43,29 @@
 %   - perfect for fig62
 %   - does not so well in any other case
 
-:- load_files([wumpus]).
+%:- load_files([wumpus]).
+
+:- use_module(wumpus, [start/0]). % agente usa modulo simulador
+
 :- dynamic([lacoes/1]).
 
-lacoes([goforward,turnleft,goforward,goforward,grab,turnleft,turnleft,goforward,goforward,turnright,goforward,climb]).
 
-wumpusworld(pit3, 4). %type: fig62, size 4; random, size 2-9; pit3, size: 3-9
+%old: wumpusworld(pit3, 4). %type: fig62, size 4; random, size 2-9; pit3, size: 3-9
+world_setup([4, fig62, stander, 1, 3, 0]). % size 4, 1 gold, 3 pits and 0 bat
 
-init_agent.
+init_agent :-
+    assert(lacoes([goforward,turnleft,goforward,goforward,turnleft,shoot,grab,turnleft,goforward,goforward,turnright,goforward,climb])).
 
 restart_agent :- init_agent.
 
-run_agent(Percepcao, Acao) :-
-  seguelista(Percepcao, Acao).
+run_agent(_, Acao) :-
+  seguelista(Acao).
 %  format('~nagent_action(~w)~n',Action),
 %  display_world.
 
-seguelista(P,A) :-
-  lacoes([A|F]),
-  retractall(lacoes(_)),
-  assert(lacoes(F)).
+seguelista(A) :-
+    retract(lacoes([A|F])),
+    assert(lacoes(F)).
 
-seguelista(P,climb).
+seguelista(climb). % default in case of empty list
 

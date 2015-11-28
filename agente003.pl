@@ -110,9 +110,25 @@
 %       Bat:        - yes or no. When fig62, no. (default no)
 
 %world_setup([random, grid, 4, stander, 64, 1, 0.1, 0.2, no]).  % (default)
-
 %world_setup([pit3, dodeca, 20, stander, 100, 1, 0.1, 0.2, no]).
 %world_setup([pit3, grid, 5, stander, 64, 1, 0.1, 0.2, no]).
+
+%New configuration format:
+% world_setup(Type,
+%    1.   Size: 2..20, with some constrictions: [2-9] grid; 20, dodeca; 4, fig62
+%    2.   Type: fig62, grid or dodeca
+%    3.   Move: stander, walker, runner (wumpus movement)
+%    4.   Gold: Integer is deterministic number, float from 0.0<G<1.0 is probabilistic
+%    5.   Pits: Idem, 0 is no pits.
+%    6.   Bats: Idem, 0 is no bats.
+%
+%       Actions: 2..400, agent actions allowed (not in this version. Now its 4 actions per square))
+%       Tries: fixed at 1 now (for future versions)
+
+
+% world_setup([4, grid, stander, 0.1, 0.2, 0.1])). % default
+%world_setup([2, grid, stander, 1, 3, 1]). % size 5, 1 gold, 3 pits and 1 bat
+world_setup([3, grid, stander, 0.1, 0.2, 0]). % size 5, 1 gold, 3 pits and 1 bat
 
 init_agent :-
     retractall(flecha(_)),
