@@ -414,7 +414,7 @@ gold_squares(E, grid, GS) :-
     all_squares(grid, E, All),
     delete(All, [1,1], GS).  % all squares but [1,1]
 
-gold_squared(E, dodeca, GS) :-
+gold_squares(E, dodeca, GS) :-
     all_squares(dodeca, E, All),
     delete(All, [1,1], GS).  % all squares but [1,1]
 
@@ -766,8 +766,9 @@ new_location_type(X, _, 270, X1, Y1, dodeca, _) :-
     member([X1, Y1], S).
 
 
-% update_agent_health: kills agent if in a room with a live wumpus or a
-%   pit.
+% update_agent_health: 
+% kills agent if in a room with a live wumpus or a pit.
+% TODO: agent starve if no more actions
 
 update_agent_health :-
   agent_location(X,Y),
