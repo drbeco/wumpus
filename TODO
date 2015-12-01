@@ -1,14 +1,46 @@
  TODO:
 
-- walker:
-   size: from 2 to 9
-   gold: random quantity (probability 0.1), not in [1,1]
-   pits: random quantity (probability 0.2), random location, not in [1,1], [2,1] and [1,2]
-   wumpus: only one, random, move at will, not started in [1,1]
+--- 2015-12-01:
 
-- New hazard: bats! Move you to a random location.
+* Size 0 = random
+* debug() = setup a forced position
+* advanced_setup = setup agent start as random or [1,1], number of arrows
+* Agent always climb on [1,1] (?). To find it:
+        - grid: guindance by bumps, find left+bottom corner
+        - dodecahedron: need to check the level
+        - OR: BETTER! Climb cave always have GLITTER (?)
+        - Maybe: new perception: SEE LIGHT
+* Agent can find arrows by GLITTER
+* agent start at random cave
+* hazard: bats. Move you to a random location
+* New perception: HEAR FLAPS
+* wumpus movement (stander, walker, runner)
+* arrow can hit you back
+* -500 points if could not climb out in time (starvation)
+* restart :- agent has 3 lifes in the same world
+* measure time (benchmark)
+
+* new intelligent agent for dodecahedron
+* new agent for grid that do not assume start position [1,1] and size
+
+---
+
+DONE:
+
+- check_setup : does not fail, but return a default if wrong
+
+- stander
+- size: from 2 to 9, 
+- gold: random quantity (probability 0.1), not in [1,1]
+- pits: random quantity (probability 0.2), random location, not in [1,1], [2,1] and [1,2]
+- wumpus: only one, random, (move at will - not yet), not started in [1,1]
 
 - Make every room with 3 tunnels
+
+- Scores:
+  * 1000 points for each gold AFTER climbing alive
+  * 500 points for killing the Wumpus
+  * -500 for dying
 
 - Enough with the grids! Lets see the original topology:
 
@@ -49,14 +81,5 @@
   |                      +-+-+                      |
   +----------------------+ 01+----------------------+
                          +---+
-
-
-
-- Scores:
-  * 1000 points for each gold AFTER climbing alive
-  * 500 points for killing the Wumpus
-  * -500 for dying
-
-- Arrow can hit you back
 
 
