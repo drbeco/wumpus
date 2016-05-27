@@ -56,12 +56,8 @@ world_setup([4, fig62, stander, 1, 3, 0]). % size 4, 1 gold, 3 pits and 0 bat
 init_agent :-
     assert(lacoes([goforward,turnleft,goforward,goforward,turnleft,shoot,grab,turnleft,goforward,goforward,turnright,goforward,climb])).
 
-restart_agent :- init_agent.
-
 run_agent(_, Acao) :-
   seguelista(Acao).
-%  format('~nagent_action(~w)~n',Action),
-%  display_world.
 
 seguelista(A) :-
     retract(lacoes([A|F])),
