@@ -4,8 +4,7 @@
 %                                                                               %
 %    This program is free software; you can redistribute it and/or modify       %
 %    it under the terms of the GNU General Public License as published by       %
-%    the Free Software Foundation; either version 2 of the License, or          %
-%    (at your option) any later version.                                        %
+%    the Free Software Foundation; version 2 of the License.                    %
 %                                                                               %
 %    This program is distributed in the hope that it will be useful,            %
 %    but WITHOUT ANY WARRANTY; without even the implied warranty of             %
@@ -38,122 +37,126 @@
 % Norvig's "Artificial Intelligence: A Modern Approach", Section 6.2.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-% Strategy: goes only forward, do not turn, do not grab gold, do not come back
+% Strategy: try to solve the wumpus world without memory
 % Performance: it does not go very well as you can imagine
 %
 % To define an agent within the navigate.pl scenario, define:
 %   init_agent
-%   restart_agent
 %   run_agent
-%   wumpusworld(Type, Size)
+%   world_setup([Size, Type, Move, Gold, Pit, Bat])
 %
 %       +--------+-----------+
 %       |  Type  |    Size   |
 %       +--------+-----------+
 %       | fig62  | 4 (fixed) |
-%       | random | 2 ... 9   |
-%       | pit3   | 3 ... 9   |
+%       | grid   | 2 ... 9   |
+%       | dodeca | 20 (fixed)|
 %       +--------+-----------+
 %
-% Currently set up to solve the wumpus world in Figure 6.2 of Russell and
-% Norvig.  You can enforce generation of this world by changing the
-% initialize(random,Percept) to initialize(fig62,Percept) in the
-% navigate(Actions,Score,Time) procedure in file navigate.pl and then run
-% navigate(Actions,Score,Time).
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
 % Lista de Percepcao: [Stench,Breeze,Glitter,Bump,Scream]
 % Traducao: [Fedor,Vento,Brilho,Trombada,Grito]
-% Acoes possiveis:
-% goforward - andar
-% turnright - girar sentido horario
-% turnleft - girar sentido anti-horario
-% grab - pegar o ouro
-% climb - sair da caverna
-% shoot - atirar a flecha
-
-% Copie wumpus1.pl e agenteXX.pl onde XX eh o numero do seu agente (do grupo)
-% para a pasta rascunhos e depois de pronto para trabalhos
-% Todos do grupo devem copiar para sua pasta trabalhos, 
-% com o mesmo NUMERO, o arquivo identico.
-
+% Acoes possiveis (abreviacoes):
+% goforward (go)            - andar
+% turnright (turn ou turnr) - girar sentido horario
+% turnleft (turnl)          - girar sentido anti-horario
+% grab                      - pegar o ouro
+% climb                     - sair da caverna
+% shoot                     - atirar a flecha
+%
+% Custos:
+% Andar/Girar/Pegar/Sair/Atirar: -1
+% Morrer: -500 (buraco, wumpus ou fadiga)
+% Matar Wumpus: +500
+% Sair com ouro: +1000 para cada pepita
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%
 % Para rodar o exemplo, inicie o prolog com:
-% swipl -s agente007.pl
+% swipl -s agente003.pl
 % e faca a consulta (query) na forma:
 % ?- start.
 
-
-%:- module(agente003, [wumpusworld/2, init_agent/0, restart_agent/0, run_agent/2]).  % errado: agente nao eh modulo
-%:- load_files([wumpus]).  % tanto faz load_files ou use_module
-
 :- use_module(wumpus, [start/0]). % agente usa modulo simulador
- 
 
-% world_setup([Random, Topology, Size, Move, Actions, Tries, Gold, Pit, Bat]).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% world_setup([Size, Type, Move, Gold, Pit, Bat])
 %
-%   world_setup(Randomness, Topology, Size, Movement, Actions, Tries, Gold, Pit, Bat)
-%       Randomness: - fig62 (implies Topology=grid, Size=4, Movement=stander)
-%                   - random (implies Size range [2-9] or 20) (default)
-%                   - pit3 (implies Size range [3-9] or 20)
-%       Topology:   - grid (default)
-%                   - dodeca (aka dodecahedron original map)
-%       Size:       - 4, grid, fig62
-%                   - [2-9] grid, random (default 4)
-%                   - [3-9] grid, pit3
-%                   - 20, dodeca
-%       Movement:   - stander (does not move at all) (default)
-%                   - walker (moves when hears shoot)
+%       Size:       - fig62, 4
+%                   - grid, [2-9] (default 4)
+%                   - dodeca, 20
+%       
+%       Type,       - fig62: 4x4, 1 gold, 3 pits. Not random, all set by book.
+%       Topology &  - grid: can have random or determined variables 
+%       Randomness: - dodeca: (aka dodecahedron original map)
+%
+%       Wumpus      - stander (does not move at all) (default)
+%       Movement:   - walker (moves when hears shoot)
 %                   - runner (moves all the time)
-%       Actions:    - 2 to 400, number of maximum agent actions allowed (default 64)
-%       Tries:      - Number of trials (default 1)
-%       Gold:       - Gold probability per square. When fig62 or pit3, only one gold. (default 0.1)
-%       Pit:        - Pit probability per square. When fig62 or pit3, only 3 pits. (default 0.2)
-%       Bat:        - yes or no. When fig62, no. (default no)
-
-%world_setup([random, grid, 4, stander, 64, 1, 0.1, 0.2, no]).  % (default)
-%world_setup([pit3, dodeca, 20, stander, 100, 1, 0.1, 0.2, no]).
-%world_setup([pit3, grid, 5, stander, 64, 1, 0.1, 0.2, no]).
-
-%New configuration format:
-% world_setup(Type,
-%    1.   Size: 2..20, with some constrictions: [2-9] grid; 20, dodeca; 4, fig62
+%
+%       Gold:       - Gold probability per square. If fig62, 1 gold. (default 1 or 0.1)
+%       Pit:        - Pit probability per square. If fig62, 3 pits. (default 1 for 2x2, 2 for 3x3, 3 if Size>=4x4, or 0.2)
+%       Bat:        - Bat probability per square. If fig62, no bats. (default, idem)
+%
+% Configuration:
+%    1.   Size: 0,2..9,20, where: grid is [2-9] or 0 for random, dodeca is 20, fig62 is 4.
 %    2.   Type: fig62, grid or dodeca
 %    3.   Move: stander, walker, runner (wumpus movement)
 %    4.   Gold: Integer is deterministic number, float from 0.0<G<1.0 is probabilistic
 %    5.   Pits: Idem, 0 is no pits.
 %    6.   Bats: Idem, 0 is no bats.
 %
-%       Actions: 2..400, agent actions allowed (not in this version. Now its 4 actions per square))
-%       Tries: fixed at 1 now (for future versions)
-
-
+%   Actions: Maximum actions allowed to agent: 4 actions per square in total
+%   Tries: Number of trials for successive runs (default fixed 1)
+%
+% world_setup([Size, Type, Move, Gold, Pit, Bat])
+%
+% examples: 
 % world_setup([4, grid, stander, 0.1, 0.2, 0.1])). % default
-%world_setup([2, grid, stander, 1, 3, 1]). % size 5, 1 gold, 3 pits and 1 bat
-world_setup([3, grid, stander, 0.1, 0.2, 0]). % size 5, 1 gold, 3 pits and 1 bat
+% world_setup([5, grid, stander, 1, 3, 0.1]). % size 5, 1 gold, 3 pits and maybe some bats with prob. 0.1
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Nao mexa nestas duas linhas:
+:- load_files([wumpus]).
+% Mundo: 4x4, quadrado, wumpus nao anda, 1 ouro, probabilidade de buracos 0.2, sem morcegos.
+% Acoes totais: 64
+world_setup([4, grid, stander, 1, 0.2, 0]).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Inicie aqui seu programa.
 
-init_agent :-
-    retractall(flecha(_)),
-    assert(flecha(1)).
-
-% Funcao a implementar.
-%restart_agent :-
-%    init_agent.
+init_agent.
 
 % esta e a funcao chamada pelo simulador. Nao altere a "cabeca" da funcao. Apenas o corpo.
 % Funcao recebe Percepcao, uma lista conforme descrito acima.
 % Deve retornar uma Acao, dentre as acoes validas descritas acima.
 run_agent(Percepcao, Acao) :-
-  write('percebi: '), 
-  writeln(Percepcao),
-  wumpus:agent_arrows(1),
-  acao(Percepcao, Acao). 
+    write('percebi: '), 
+    writeln(Percepcao),
+    acao(Percepcao, Acao). 
 
-acao([_,_,no,yes,_], turnleft) :- %vira para a esquerda sempre que bater na parede
-    writeln('acao: esquerda').
+% Lista de Percepcao: [Fedor,Vento,Brilho,Trombada,Grito]
 acao([_,_,yes,_,_], grab) :- %pega o ouro se sentir o brilho
     writeln('acao: pega').
-acao([yes,_,no,_,_], shoot):-  %atira em linha reta se sentir fedor e tiver uma flecha
-    flecha(1),
-    writeln('acao: atira').
-acao(_, goforward) :- %vai pra frente caso default
+acao([_,_,_,yes,_], turnright) :- %vira para a direita sempre que bater na parede
+    writeln('acao: esquerda').
+acao([yes,_,_,_,no], A):-  %atira, andar, girar ou sair em caso de fedor sem grito
+    random_member(A, [shoot, shoot, shoot, shoot, turnright, turnright, turnright, climb, climb, goforward]),
+    write('acao aleatoria: '),
+    writeln(A).
+acao([_,no,_,_,yes], goforward) :- %anda se escutar grito e sem brisa
     writeln('acao: frente').
+acao([_,yes,_,_,yes], A):-  %grito com brisa
+    random_member(A, [climb, turnright]),
+    write('acao aleatoria: '),
+    writeln(A).
+acao([_,yes,_,_,_], A):-  %brisa
+    random_member(A, [climb, climb, climb, turnright, turnright, goforward]),
+    write('acao aleatoria: '),
+    writeln(A).
+acao(_, A) :- % sorteia default
+    random_member(A, [turnright, goforward, climb]),
+    write('acao aleatoria: '),
+    writeln(A).
 
