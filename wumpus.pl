@@ -4,8 +4,7 @@
 %                                                                               %
 %    This program is free software; you can redistribute it and/or modify       %
 %    it under the terms of the GNU General Public License as published by       %
-%    the Free Software Foundation; either version 2 of the License, or          %
-%    (at your option) any later version.                                        %
+%    the Free Software Foundation; version 2 of the License.             %
 %                                                                               %
 %    This program is distributed in the hope that it will be useful,            %
 %    but WITHOUT ANY WARRANTY; without even the implied warranty of             %
@@ -1192,9 +1191,12 @@ check_setup_gold(G0, _, G0) :-
     float(G0), 
     check_setup_prob(G0). % Gold Probability P
 
+%check_setup_gold(G0, _, 0.1) :- % default probability 0.1 if out of range
+%    float(G0).
+
 check_setup_gold(G0, S1, G0) :- 
     integer(G0),
-    G0>=0,
+    G0>=0, % at least one gold (BUG G0>0)
     MX is S1 * S1 - 1,
     G0=<MX.
 
@@ -1209,6 +1211,9 @@ check_setup_hazard(H0, _, H0) :-
     float(H0),
     check_setup_prob(H0).
 
+%check_setup_hazard(G0, _, 0.2) :- % default probability 0.2 if out of range
+%    float(G0).
+
 check_setup_hazard(H0, S1, H0) :-
     integer(H0),
     H0>=0,
@@ -1217,7 +1222,9 @@ check_setup_hazard(H0, S1, H0) :-
 
 check_setup_hazard(_, 2, 1). % Default 1 hazard, size = 2x2
 
-check_setup_hazard(_, _, 2). % Default 2 hazards, size >= 3x3
+check_setup_hazard(_, 3, 2). % Default 2 hazards, size = 3x3
+
+check_setup_hazard(_, _, 3). % Default 3 hazards, size >= 4x4
 
 check_setup_prob(P) :- P>0.0, P<1.0.        % Probability 0.0<P<1.0
 
