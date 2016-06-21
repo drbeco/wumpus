@@ -129,6 +129,7 @@
     agent_gold/1,           % ww Number of golds that the agent has (start with 0)
     agent_arrows/1,         % ww Number of arrows that the agent has (start with 1)
     agent_score/1,          % ww Game Score
+    agent_num_actions/1,    % ww Number of the current agent action
     gold_probability/1,     % ww Probability that a location has gold (default 0.10)
     pit_probability/1,      % ww Probability that a non-(1,1) location has a pit (default 0.20)
     max_agent_lifes/1,      % ww Maximum agent tries (climb or die) per world (default 1)
@@ -215,7 +216,9 @@ run_agent_trials(Trials,NextTrial,Score) :-
   init_agent,           % needs to be defined externally
   display_world,
   !,
-  run_agent_action(1,Percept),
+  retractall(agent_num_actions(_)),
+  assert(agent_num_actions(1)),
+  run_agent_action(Percept),
   agent_score(Score1),
   NextTrial1 is NextTrial + 1,
   run_agent_trials(Trials,NextTrial1,Score2),
@@ -228,27 +231,31 @@ run_agent_trials(Trials,NextTrial,Score) :-
 %   defined by max_agent_actions(M).  In any case, the total time
 %   spent during calls to run_agent is returned in Time (millisecs).
 
-run_agent_action(_,_) :-            % trial over when agent dies or
+run_agent_action(_) :-              % trial over when agent dies or
   ( agent_health(dead) ;            %   leaves cave
     agent_in_cave(no) ),
   !.
 
-run_agent_action(NumActions,_) :-    % agent allowed only N actions as
+run_agent_action(_) :-              % agent allowed only N actions as
+  agent_num_actions(NumActions),    % current action
   max_agent_actions(N),             %   defined by max_agent_actions(N)
   NumActions > N,
   !.
 
-run_agent_action(NumActions,Percept) :-
+run_agent_action(Percept) :-
   run_agent(Percept,Action),          % needs to be defined externally
   check_agent_action(Action),         % check for goforward, turnright, turnleft, shoot, grab or climb.
   format("~nExternal run_agent(~w,~w)~n", [Percept, Action]),
   execute(Action,Percept1),
   display_world,
+  agent_num_actions(NumActions),             % current action
+  retractall(agent_num_actions(_)),
   NumActions1 is NumActions + 1,
+  assert(agent_num_actions(NumActions1)),    % new current action number
   !,
-  run_agent_action(NumActions1,Percept1).
+  run_agent_action(Percept1).
 
-run_agent_action(_,Percept) :-
+run_agent_action(Percept) :-
     format("External function run_agent(~w, Nop) failed miserably!~n", [Percept]),
     !, fail.
 
@@ -554,13 +561,14 @@ execute(_,[no,no,no,no,no]) :-
 execute(goforward,[Stench,Breeze,Glitter,Bump,no]) :-
   decrement_score,
   goforward(Bump),        % update location and check for bump
-  update_agent_health,    % check for wumpus or pit
+  update_agent_health,    % check for wumpus, pit or max actions
   stench(Stench),         % update rest of percept
   breeze(Breeze),
   glitter(Glitter).
 
 execute(turnleft,[Stench,Breeze,Glitter,no,no]) :-
   decrement_score,
+  update_agent_health,    % check for wumpus, pit or max actions
   agent_orientation(Angle),
   NewAngle is (Angle + 90) mod 360,
   retract(agent_orientation(Angle)),
@@ -571,6 +579,7 @@ execute(turnleft,[Stench,Breeze,Glitter,no,no]) :-
 
 execute(turnright,[Stench,Breeze,Glitter,no,no]) :-
   decrement_score,
+  update_agent_health,    % check for wumpus, pit or max actions
   agent_orientation(Angle),
   NewAngle is (Angle + 270) mod 360,
   retract(agent_orientation(Angle)),
@@ -583,14 +592,16 @@ execute(grab,[Stench,Breeze,no,no,no]) :-
   decrement_score,
   stench(Stench),
   breeze(Breeze),
-  get_the_gold.
+  get_the_gold,
+  update_agent_health.    % check for wumpus, pit or max actions
 
 execute(shoot,[Stench,Breeze,Glitter,no,Scream]) :-
   decrement_score,
   stench(Stench),
   breeze(Breeze),
   glitter(Glitter),
-  shoot_arrow(Scream).
+  shoot_arrow(Scream),
+  update_agent_health.    % check for wumpus, pit or max actions
 
 execute(climb,[no,no,no,no,no]) :-
   agent_location(1,1), !,
@@ -608,7 +619,8 @@ execute(climb,[Stench,Breeze,Glitter,no,no]) :-
   stench(Stench),
   breeze(Breeze),
   glitter(Glitter),
-  format("You cannot leave the cave from here.~n",[]).
+  format("You cannot leave the cave from here.~n",[]),
+  update_agent_health.    % check for wumpus, pit or max actions
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -793,8 +805,19 @@ update_agent_health :-
   assert(agent_score(S1)),
   format("Aaaaaaaaaaaaaaaaaaa!~n",[]).
 
-update_agent_health.
+update_agent_health :-
+  agent_num_actions(N), % current action
+  max_agent_actions(M), % max allowed actions
+  N >= M,
+  !,
+  retract(agent_health(alive)),
+  assert(agent_health(dead)),
+  retract(agent_score(S)),
+  S1 is S - 500,
+  assert(agent_score(S1)),
+  format("You've starved to death inside this faultfinding cave!~n",[]).
 
+update_agent_health.
 
 % get_the_gold: adds gold to agents loot if any gold in the square
 
