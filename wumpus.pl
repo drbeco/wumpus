@@ -802,7 +802,7 @@ update_agent_health :-
   retract(agent_score(S)),
   S1 is S - 500,
   assert(agent_score(S1)),
-  format("Aaaaaaaaaaaaaaaaaaa!~n",[]).
+  format("Yyiiiieeee... Fell in pit!~n",[]).
 
 update_agent_health :-
   agent_num_actions(N), % current action
