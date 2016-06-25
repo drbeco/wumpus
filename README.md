@@ -70,4 +70,11 @@ Strategy:
 
 Headstrong: just go forward, stubborn as a mule, stiff-necked.
 
+## References
+
+* Original Wumpus version 1: http://www.atariarchives.org/bcc1/showpage.php?page=247
+* Original Wumpus version 2: http://www.atariarchives.org/bcc2/showpage.php?page=244
+* http://www.trs-80.org/hunt-the-wumpus/
+* https://www.practicingruby.com/articles/wumpus
+* A C code simulating BASIC code for the original Wumpus: https://www.daniweb.com/programming/computer-science/threads/424300/wumpus-recoded-in-c
 
