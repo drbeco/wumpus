@@ -798,8 +798,6 @@ display_dodeca_1row(3) :-
     agent_location(X, _),
     member([X, [_, C1, _, _]], L), % North
     D = [0, C1, 0], % C1 may be zero
-    %all_squares(dodeca, 20, S),
-    %member([C1, Y1], S). % square up -> SU = [C1, Y1]
     display_dodeca_squares(D).
 
 display_dodeca_1row(2) :-
