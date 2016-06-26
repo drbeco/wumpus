@@ -18,7 +18,7 @@
 % Hunt The Wumpus - World Simulator
 %
 %   Edited, Compiled, Modified by:
-%   Author: 
+%   Author:
 %     - Ruben Carlo Benante (rcb@beco.cc)
 %   Copyright: 2012 - 2016
 %   License: GNU GPL Version 2.0
@@ -38,7 +38,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Version 4.1 by Beco
 %
-% World Setup: 
+% World Setup:
 %
 % world_setup([S, T, M, G, P, B]).
 % 1. Size: 2..20, with some constrictions: [2-9] grid; 20, dodeca; 4, fig62
@@ -69,7 +69,7 @@
 %   init_agent.
 %   run_agent(Perception, Action).
 %   world_setup([Size, Type, Move, Golds, Pits, Bats]).
-%   Types of Wumpus Movement 
+%   Types of Wumpus Movement
 %       walker    : original: moves when it hears a shoot, or you enter its cave
 %       runner    : go forward and turn left or right on bumps, maybe on pits
 %       wanderer  : arbitrarily choses an action from [sit,turnleft,turnright,goforward]
@@ -126,7 +126,7 @@
     wumpus_health/1,        % ww Wumpus health: alive/dead
     wumpus_orientation/1,   % ww Wumpus orientation: 0, 90, 180, 270
     wumpus_last_action/1,   % ww Wumpus last action
-    wumpus_move_rule/1,     % ww Wumpus movement rule: walker, runner, wanderer, spinner, hoarder, spelunker, stander 
+    wumpus_move_rule/1,     % ww Wumpus movement rule: walker, runner, wanderer, spinner, hoarder, spelunker, stander
     gold/2,                 % ww Gold positions
     pit/2,                  % ww Pit positions
     bat/2,                  % ww Bat positions
@@ -151,11 +151,11 @@
 %
 %L=[Size, Type, Move, Gold, Pit, Bat]
 %L=[4, grid, stander, 0.1, 0.2, 0.1] % default
-manual_setup(L0) :- 
-    check_setup(L0, L1), 
+manual_setup(L0) :-
+    check_setup(L0, L1),
     retractall(get_setup(_)),
     assert(get_setup(L1)), % [random, grid, 4, stander, 64, 1, 0.1, 0.2, no])), % default definition
-    !. 
+    !.
 
 manual_init :-
     initialize(P), % also sets get_setup to default in case of no manual_setup
@@ -277,8 +277,8 @@ run_agent_action(Percept) :-
     !, fail.
 
 % initialize(World,Percept): initializes the Wumpus world and our fearless
-%   agent according to the given World and returns the Percept from 
-%   square 1,1.  
+%   agent according to the given World and returns the Percept from
+%   square 1,1.
 %   World can be:
 %   fig62: for Figure 6.2 of Russell and Norvig,
 %   grid: a grid sized 2x2 to 9x9
@@ -290,7 +290,7 @@ initialize([Stench,no,no,no,no]) :-
     stench(Stench).
     % breeze(Breeze), % no pit on [1,1], [1,2] and [2,1]
     % glitter(Glitter). % not on [1,1]
- 
+
 % restart: restarts the current world from scratch.  For now, since we only
 % have one world fig62, restart just reinitializes this world.
 % TODO: maybe to be used with lifes.
@@ -304,7 +304,7 @@ initialize([Stench,no,no,no,no]) :-
 initialize_world :-
     ww_retractall, %retract wumpus, gold, pit and bat
     assert_setup, % assert user or default setup
-    get_setup(L), %[Size, Type, Move, Gold, Pit, Bat]), 
+    get_setup(L), %[Size, Type, Move, Gold, Pit, Bat]),
     L=[Size, _, Move, Gold, Pit, Bat],
     addto_ww_init_state(world_extent(Size)),
     addto_ww_init_state(wumpus_orientation(0)),
@@ -317,16 +317,16 @@ initialize_world :-
     Actions is Size * Size * 4,                      % 4 actions per square average (fig62 is 2.875 moves per square)
     addto_ww_init_state(max_agent_actions(Actions)), % Maximum actions per trial allowed by agent
     addto_ww_init_state(wumpus_move_rule(Move)),     % Wumpus move style
-    initialize_world_type(L). 
+    initialize_world_type(L).
 
-% initialize_world_type(World): Initializes the Wumpus world 
+% initialize_world_type(World): Initializes the Wumpus world
 % World = [Size, Type, Move, Gold, Pit, Bat]
-% 
+%
 % initialize_world_type(World): Initializes the Wumpus world in Figure 6.2 of Russell & Norvig
 initialize_world_type([_,fig62,_,_,_,_]) :-
     addto_ww_init_state(wumpus_location(1,3)), % wumpus location
     addto_ww_init_state(gold(2,3)), % gold position
-    addto_ww_init_state(pit(3,1)),  % pit 1 
+    addto_ww_init_state(pit(3,1)),  % pit 1
     addto_ww_init_state(pit(3,3)),  % pit 2
     addto_ww_init_state(pit(4,4)),  % pit 3
     ww_initial_state(L),
@@ -376,15 +376,15 @@ hazard_squares(E, grid, HS) :-
     subtract(GS, [[1,2],[2,1]], HS). % all squares but [1,1],[2,1],[1,2]
 
 hazard_squares(E, dodeca, HS) :-
-    gold_squares(E, dodeca, GS), % all squares but [1,1] 
+    gold_squares(E, dodeca, GS), % all squares but [1,1]
     subtract(GS, [[2,2],[5,2],[6,2]], HS). % all squares but [2,2],[5,2],[6,2]
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-% dodeca_map : mapping dodecahedron tunnels. 
+% dodeca_map : mapping dodecahedron tunnels.
 % For each Cave from 1 to 20, there are exactly 3 tunnels Cn =\= 0
 % [Cave1, [ C0, C1, C2, C3]], ..., [Cave20, [C0, C1, C2, C3]]
-% 
+%
 % C0 = East  / right / 0
 % C1 = North / up    / 90
 % C2 = West  / left  / 180
@@ -414,7 +414,7 @@ dodeca_map([
     ]).
 
 % all_squares(Extent,AllSqrs): AllSqrs is the list of all possible
-%   squares [X,Y] in a wumpus world of 
+%   squares [X,Y] in a wumpus world of
 %   grid: size Extent by Extent.
 %   dodeca: 20 rooms, [Room Number, Room Level]
 
@@ -542,7 +542,7 @@ execute(grab,[Stench,Breeze,no,no,no]) :-
     update_agent_health,    % check for wumpus, pit or max actions
     stench(Stench),
     breeze(Breeze).
-    
+
 execute(shoot,[Stench,Breeze,Glitter,no,Scream]) :-
     decrement_score,
     shoot_arrow(Scream),
@@ -579,7 +579,7 @@ execute(sit,[Stench,Breeze,Glitter,no,no]) :-
     stench(Stench),
     breeze(Breeze),
     glitter(Glitter).
-    
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Perceptions [Stench,Breeze,Glitter,Bump,Scream]
 
@@ -644,7 +644,7 @@ shoot_arrow(Scream) :-
 shoot_arrow(no).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% update_agent_health: 
+% update_agent_health:
 % kills agent if in a room with a live wumpus or a pit.
 
 update_agent_health :-
@@ -861,7 +861,7 @@ ww_retractall :-
     retractall(pit_probability(_)),
     retractall(bat_probability(_)),
     retractall(gold_probability(_)),
-    retractall(max_agent_lifes(_)), 
+    retractall(max_agent_lifes(_)),
     retractall(max_agent_actions(_)),
     retractall(ww_initial_state(_)),
     assert(ww_initial_state([])).
@@ -893,10 +893,10 @@ check_agent_action_which(_) :- format("Agent gave unknow action!~n"), !, fail.
 % example: world_setup([5, grid, stander, 1, 3, 1]). % size 5, 1 gold, 3 pits and 1 bat
 % world_setup([4, grid, stander, 0.1, 0.2, 0.1])). % default
 
-%get_setup([Size, Type, Move, Gold, Pit, Bat]) 
+%get_setup([Size, Type, Move, Gold, Pit, Bat])
 assert_setup :-
     current_predicate(world_setup, world_setup(_)),
-    world_setup(Lin), % user definition 
+    world_setup(Lin), % user definition
     check_setup(Lin, Lout),
     !,
     format("User defined setup: Size=~w, Type=~w, Move=~w, Gold=~w, Pit=~w, Bat=~w~n", Lout),
@@ -916,14 +916,14 @@ assert_setup :-
     assert(get_setup(Lout)). % default
 
 % correcting wrong combinations
-% [Size, Type, Move, Gold, Pit, Bat]) 
+% [Size, Type, Move, Gold, Pit, Bat])
 
 % fig62
-check_setup([_, fig62|_], [4, fig62, stander, 1, 3, 0]). % Size 4, fig62, wumpus standing still, 1 gold, 3 pits, no bats 
+check_setup([_, fig62|_], [4, fig62, stander, 1, 3, 0]). % Size 4, fig62, wumpus standing still, 1 gold, 3 pits, no bats
 
 % grid
 check_setup([Size, grid, Move, Gold, Pit, Bat], [S1, grid, M1, G1, P1, B1]) :-
-    check_setup_size(grid, Size, S1), 
+    check_setup_size(grid, Size, S1),
     check_setup_move(Move, M1),
     %check_setup_lifes(Lifes),
     check_setup_gold(Gold, S1, G1),
@@ -932,7 +932,7 @@ check_setup([Size, grid, Move, Gold, Pit, Bat], [S1, grid, M1, G1, P1, B1]) :-
 
 % dodeca
 check_setup([_, dodeca, Move, Gold, Pit, Bat], [S1, dodeca, M1, G1, P1, B1]) :-
-    check_setup_size(dodeca, 20, S1), 
+    check_setup_size(dodeca, 20, S1),
     check_setup_move(Move, M1),
     %check_setup_lifes(Lifes),
     check_setup_gold(Gold, S1, G1),
@@ -942,9 +942,9 @@ check_setup([_, dodeca, Move, Gold, Pit, Bat], [S1, dodeca, M1, G1, P1, B1]) :-
 % Map size (or extension)
 check_setup_size(grid, S0, S0) :- S0>=2, S0=<9.
 check_setup_size(grid, _, 4).
-check_setup_size(dodeca, _, 20). 
+check_setup_size(dodeca, _, 20).
 
-% Types of Wumpus Movement 
+% Types of Wumpus Movement
 check_setup_move(walker, walker). % original: moves when it hears a shoot, or you enter its cave
 check_setup_move(runner, runner). % go forward and turn left or right on bumps, maybe on pits
 check_setup_move(wanderer, wanderer). % arbitrarily choses an action from [sil,turnleft,turnright,goforward]
@@ -956,11 +956,11 @@ check_setup_move(_, stander). % do not move (default)
 %check_setup_lifes(1).  %check_setup_lifes(T) :- T>=1, T=<5. % Lifes per labirinth
 
 % Gold, Pit and Bat : integer, fixed number; float, probability
-check_setup_gold(G0, _, G0) :- 
-    float(G0), 
+check_setup_gold(G0, _, G0) :-
+    float(G0),
     check_setup_prob(G0). % Gold Probability P
 
-check_setup_gold(G0, S1, G0) :- 
+check_setup_gold(G0, S1, G0) :-
     integer(G0),
     G0>=0, % at least one gold (BUG G0>0)
     MX is S1 * S1 - 1,
@@ -987,7 +987,7 @@ check_setup_prob(P) :- P>0.0, P<1.0.  % Probability 0.0<P<1.0
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % move the wumpus
 %
-% Types of Wumpus Movement 
+% Types of Wumpus Movement
 % walker    % original: moves when it hears a shoot, or you enter its cave
 % runner    % go forward and turn left or right on bumps, maybe on pits
 % wanderer  % arbitrarily choses an action from [sit,turnleft,turnright,goforward]
@@ -997,7 +997,7 @@ check_setup_prob(P) :- P>0.0, P<1.0.  % Probability 0.0<P<1.0
 % stander   % do not move (default)
 %
 
-% move_wumpus: Moves the wumpus according to a pre-selected 
+% move_wumpus: Moves the wumpus according to a pre-selected
 % Rule as defined by wumpus_move_rule(Rule).
 
 move_wumpus(_) :-
@@ -1183,9 +1183,9 @@ facing_home_type(2, 1, 180, T) :-
 facing_home_type(_, 2, 270, dodeca).
 
 
-% move_towards(X1, Y1, Ang, X2, Y2, Action): 
+% move_towards(X1, Y1, Ang, X2, Y2, Action):
 % If (X1, Y1) == (X2, Y2), action is sit.
-% If (X1, Y1) =\= (X2, Y2), 
+% If (X1, Y1) =\= (X2, Y2),
 % action is turnleft, turnright or goforward.
 
 move_towards(X1, Y1, _, X1, Y1, sit).
@@ -1263,14 +1263,14 @@ direction_action(_, _, goforward).
 
 rad2deg(R, D) :-
     R >= 0.0,
-    !,  
-    Dp is R * 180.0 / pi, 
+    !,
+    Dp is R * 180.0 / pi,
     D is integer(Dp).
 
 rad2deg(R, D) :-
     R < 0.0,
-    Rp is R + 2.0 * pi, 
-    rad2deg(Rp, D). 
+    Rp is R + 2.0 * pi,
+    rad2deg(Rp, D).
 
 % has_hazard_perception/3 : true if square is adjacent or contains a hazard
 % F is wumpus_location(X,Y) or pit(X,Y).
