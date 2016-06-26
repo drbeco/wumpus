@@ -218,7 +218,6 @@ start :-
 evaluate_agent(Trials,Score) :-
     run_agent_trials(Trials,1,Score).
 
-
 % run_agent_trials(Trials,NextTrial,Score,Time): Runs trials from NextTrial
 %   to Trial and returns the total Score and Time (millisecs) spent inside
 %   calls to init_agent and run_agent.
@@ -240,7 +239,6 @@ run_agent_trials(Trials,NextTrial,Score) :-
     NextTrial1 is NextTrial + 1,
     run_agent_trials(Trials,NextTrial1,Score2),
     Score is Score1 + Score2.
-
 
 % run_agent_action(NumActions,Percept,Time):  Continues to ask for and
 %   execute actions from run_agent(Percept,Action) until either the
@@ -1118,7 +1116,6 @@ execute_wumpus_action(goforward) :-
     !,
     retract(wumpus_location(X, Y)),   % update location
     assert(wumpus_location(X1, Y1)).
-    %update_agent_health.
 
 execute_wumpus_action(goforward).  % unsuccessfully
 
@@ -1213,31 +1210,27 @@ move_towards_type(X1, _, Ang1, X2, _, Act, dodeca) :-
     Ang2 is I * 90,
     direction_action(Ang1, Ang2, Act).
 
-% dodeca: distant cave, increasing
+% dodeca: distant cave
 move_towards_type(X1, _, Ang1, X2, _, Act, dodeca) :-
     move_dodeca_adjacent(X1, Xadj, X2),
     !,
     move_towards_type(X1, _, Ang1, Xadj, _, Act, dodeca).
-%    dodeca_map(L),
-%    member([X1, Adj], L),
-%    nth0(I, Adj, Xadj),
-%    Ang2 is I * 90,
-%    direction_action(Ang1, Ang2, Act).
 
 % dodeca: distant cave, increasing
 move_dodeca_adjacent(X1, Xadj, X2) :-
     X1 < X2,
     dodeca_map(L),
     member([X1, Adj], L),
-    max_list(Adj, Xadj).
+    exclude(<(X2), Adj, Opt), % exclude caves greater than X2
+    max_list(Opt, Xadj).
 
 % dodeca: distant cave, decreasing
 move_dodeca_adjacent(X1, Xadj, X2) :-
     X1 > X2,
     dodeca_map(L),
     member([X1, Adj], L),
-    delete(Adj, 0, Vadj),
-    min_list(Vadj, Xadj).
+    exclude(>(X2), Adj, Opt), % exclude caves smaller than X2
+    min_list(Opt, Xadj).
 
 % nearest_orientation(Angle,Orient):  Orient is the nearest orientation
 %   (0, 90, 180, 270) to angle (in degrees), where 0 <= A < 360.
