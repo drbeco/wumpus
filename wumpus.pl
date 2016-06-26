@@ -741,12 +741,9 @@ display_rows(0, E) :-
 
 display_rows(Row, E) :-
     display_dashes(E),
-    display_1row(Row, E), %display_square(1, Row, E),
+    display_square(1, Row, E),
     Row1 is Row - 1,
     display_rows(Row1 ,E).
-
-display_1row(Row, E) :-
-    display_square(1, Row, E).
 
 display_square(X, _, E) :-
     X > E,
@@ -761,17 +758,17 @@ display_square(X, Y, E) :-
 
 % display the letters 'W ', 'A ', 'P ' or 'G ', or spaces
 display_info(X, Y) :-
-    display_location_fact(wumpus_location, X, Y, 'W'),
-    display_location_fact(agent_location, X, Y, 'A'),
-    display_location_fact(pit, X, Y, 'P'),
-    display_location_fact(bat, X, Y, 'B'),
-    display_location_fact(gold, X, Y, 'G').
+    display_location_fact(wumpus_location, X, Y, 'W'), % Wumpus
+    display_location_fact(agent_location, X, Y, 'A'),  % Agent
+    display_location_fact(pit, X, Y, 'P'),             % Pit
+    display_location_fact(bat, X, Y, 'B'),             % Bat
+    display_location_fact(gold, X, Y, 'G').            % Gold
 
-display_location_fact(Functor, X, Y, Atom) :-
+display_location_fact(Functor, X, Y, C) :-
     Fact =.. [Functor, X, Y], % Fact = gold(X, Y)
     Fact, % is Fact true?
     !,
-    format('~w',[Atom]).
+    format('~w',[C]).
 
 display_location_fact(_, _, _, _) :-
     format(' ',[]).
