@@ -572,24 +572,24 @@ execute(goforward,[Stench,Breeze,Glitter,Bump,no]) :-
 
 execute(turnleft,[Stench,Breeze,Glitter,no,no]) :-
   decrement_score,
-  update_agent_health,    % check for wumpus, pit or max actions
   agent_orientation(Angle),
   NewAngle is (Angle + 90) mod 360,
   retract(agent_orientation(Angle)),
   assert(agent_orientation(NewAngle)),
   move_wumpus(turnleft), % move wumpus according to the rule set
+  update_agent_health,    % check for wumpus, pit or max actions
   stench(Stench),
   breeze(Breeze),
   glitter(Glitter).
 
 execute(turnright,[Stench,Breeze,Glitter,no,no]) :-
   decrement_score,
-  update_agent_health,    % check for wumpus, pit or max actions
   agent_orientation(Angle),
   NewAngle is (Angle + 270) mod 360,
   retract(agent_orientation(Angle)),
   assert(agent_orientation(NewAngle)),
   move_wumpus(turnright), % move wumpus according to the rule set
+  update_agent_health,    % check for wumpus, pit or max actions
   stench(Stench),
   breeze(Breeze),
   glitter(Glitter).
@@ -1386,8 +1386,8 @@ execute_wumpus_action(goforward) :-
   (X1 > 1 ; Y1 > 1),                % can't go into 1,1
   !,
   retract(wumpus_location(X, Y)),   % update location
-  assert(wumpus_location(X1, Y1)),
-  update_agent_health.
+  assert(wumpus_location(X1, Y1)).
+  %update_agent_health.
 
 execute_wumpus_action(goforward).  % unsuccessfully
 
