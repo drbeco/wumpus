@@ -95,7 +95,7 @@
 %
 % 1000 points for each gold AFTER climbing alive
 % 500 points for killing the Wumpus
-% -500 for dying
+% -500 for dying (1. eaten alive by wumpus, 2. falling into a pit, 3. walking until exhausted)
 %
 
 % Protect all predicates (make private), except the ones listed bellow:
@@ -119,6 +119,9 @@
     world_extent/1,         % ww World extent size
     wumpus_location/2,      % ww Wumpus location: (X,Y) on grid; (CaveNumber,Level) on dodeca;
     wumpus_health/1,        % ww Wumpus health: alive/dead
+    wumpus_orientation/1,   % ww Wumpus orientation: 0, 90, 180, 270
+    wumpus_last_action/1,   % ww Wumpus last action
+    wumpus_move_rule/1,     % ww Wumpus movement rule: walker, runner, wanderer, spinner, hoarder, spelunker, stander 
     gold/2,                 % ww Gold positions
     pit/2,                  % ww Pit positions
     agent_location/2,       % ww (X,Y) on grid; (CaveNumber, Level) on dodeca;
@@ -140,7 +143,8 @@
 % Run by hand
 %
 
-%L=[Random, Topology, Size, Move, Actions, Tries, Gold, Pit, Bat]
+%L=[Size, Type, Move, Gold, Pit, Bat]
+%L=[4, grid, stander, 0.1, 0.2, 0.1] % default
 manual_setup(L0) :- 
     check_setup(L0, L1), 
     retractall(get_setup(_)),
@@ -213,7 +217,7 @@ run_agent_trials(Trials,NextTrial,Score) :-
   initialize(Percept),  % world and agent
   format("External init_agent...~n"),
   init_agent,           % needs to be defined externally
-  display_world,
+  display_world, % TODO display fixed setup once
   !,
   retractall(agent_num_actions(_)),
   assert(agent_num_actions(1)),
@@ -299,8 +303,8 @@ initialize_world :-
     addto_ww_init_state(max_agent_lifes(1)),         % Maximum agent lifes (climb or die) per world
     Actions is Size * Size * 4,                      % 4 actions per square average (fig62 is 2.875 moves per square)
     addto_ww_init_state(max_agent_actions(Actions)), % Maximum actions per trial allowed by agent
-    addto_ww_init_state(wumpus_move(Move)),          % Wumpus move style
-    initialize_world(L).
+    addto_ww_init_state(wumpus_move_rule(Move)),     % Wumpus move style
+    initialize_world(L). %BUG rename initialize_world_type(L)
     %ww_initial_state(L),
     %assert_list(L).
 
@@ -332,12 +336,12 @@ initialize_world([E, Type, _, PG, PP, PB]) :-
     %at_least_one_gold(grid, E),
     place_it(pit, PP, HS),   % AllSqrs3
     place_it(bat, PB, HS),   % place some bats not near the entrance
-    place_it(wumpus_location, 1, GS), % initialize wumpus (not [1,1])
+    place_it(wumpus_location, 1, GS), % exactly one wumpus, initialize it not in [1,1]
     %random_member([WX,WY], GS),  % initialize wumpus (not [1,1])
     %addto_ww_init_state(wumpus_location(WX,WY)),
     %   wumpus_movement_rules(Rules),
     %   random_member(Rule,Rules),
-    %   addto_ww_init_state(wumpus_movement_rule(Rule)),
+    %   addto_ww_init_state(wumpus_select_action(Rule)),
     ww_initial_state(L),
     assert_list(L).
 
@@ -447,7 +451,7 @@ dodeca_map([[1, [6, 0, 2, 5]], [2, [3, 1, 0, 7]], [3, [0, 8, 2, 4]], [4, [0, 9, 
 % all_squares(Extent,AllSqrs): AllSqrs is the list of all possible
 %   squares [X,Y] in a wumpus world of 
 %   grid: size Extent by Extent.
-%   dodeca: 20 rooms
+%   dodeca: 20 rooms, [Room Number, Room Level]
 
 all_squares(dodeca, 20, [[1,1],[2,2],[5,2],[6,2],[3,3],[7,3],[4,3],[10,3],[11,3],[15,3],[8,4],[12,4],[9,4],[14,4],[16,4],[20,4],[13,5],[17,5],[19,5],[18,6]]).
 
@@ -560,6 +564,7 @@ execute(_,[no,no,no,no,no]) :-
 execute(goforward,[Stench,Breeze,Glitter,Bump,no]) :-
   decrement_score,
   goforward(Bump),        % update location and check for bump
+  move_wumpus(goforward), % move wumpus according to the rule set
   update_agent_health,    % check for wumpus, pit or max actions
   stench(Stench),         % update rest of percept
   breeze(Breeze),
@@ -572,6 +577,7 @@ execute(turnleft,[Stench,Breeze,Glitter,no,no]) :-
   NewAngle is (Angle + 90) mod 360,
   retract(agent_orientation(Angle)),
   assert(agent_orientation(NewAngle)),
+  move_wumpus(turnleft), % move wumpus according to the rule set
   stench(Stench),
   breeze(Breeze),
   glitter(Glitter).
@@ -583,6 +589,7 @@ execute(turnright,[Stench,Breeze,Glitter,no,no]) :-
   NewAngle is (Angle + 270) mod 360,
   retract(agent_orientation(Angle)),
   assert(agent_orientation(NewAngle)),
+  move_wumpus(turnright), % move wumpus according to the rule set
   stench(Stench),
   breeze(Breeze),
   glitter(Glitter).
@@ -592,6 +599,7 @@ execute(grab,[Stench,Breeze,no,no,no]) :-
   stench(Stench),
   breeze(Breeze),
   get_the_gold,
+  move_wumpus(grab), % move wumpus according to the rule set
   update_agent_health.    % check for wumpus, pit or max actions
 
 execute(shoot,[Stench,Breeze,Glitter,no,Scream]) :-
@@ -600,6 +608,7 @@ execute(shoot,[Stench,Breeze,Glitter,no,Scream]) :-
   breeze(Breeze),
   glitter(Glitter),
   shoot_arrow(Scream),
+  move_wumpus(shoot), % move wumpus according to the rule set
   update_agent_health.    % check for wumpus, pit or max actions
 
 execute(climb,[no,no,no,no,no]) :-
@@ -619,6 +628,7 @@ execute(climb,[Stench,Breeze,Glitter,no,no]) :-
   breeze(Breeze),
   glitter(Glitter),
   format("You cannot leave the cave from here.~n",[]),
+  move_wumpus(climb), % move wumpus according to the rule set
   update_agent_health.    % check for wumpus, pit or max actions
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -659,6 +669,17 @@ breeze(yes) :-
 
 breeze(no).
 
+% is_adjacent/4 : true if two squares are adjacent
+%is_adjacent(X1, Y1, X2, Y2) :-
+%    get_setup([_,Type|_]),
+%    (Type == grid ; Type == fig62),
+%    (X1 =:= X2, Y1 is Y2 + 1;
+%     X1 =:= X2, Y1 is Y2 - 1;
+%     Y1 =:= Y2, X1 is X2 + 1;
+%     Y1 =:= Y2, X1 is X2 - 1).
+% TODO: dodeca, bat
+
+% is_adjacent/3 : true if square is adjacent of a hazard
 % F is wumpus_location(X,Y) or pit(X,Y).
 is_adjacent(X, Y, F) :-
     get_setup([_,Type|_]),
@@ -676,7 +697,7 @@ is_adjacent_type(X, Y, F, Type) :-
       call(F, X, Y0) ;
       call(F, X, Y) ).
 
-is_adjacent_top(X, _, F, dodeca) :-
+is_adjacent_type(X, _, F, dodeca) :-
     dodeca_map(L),
     member([X,[C1, C2, C3, C4]], L),
     ( call(F, C1, _) ;
@@ -719,6 +740,7 @@ goforward(yes).     % Ran into wall, Bump = yes
 
 % new_location(X,Y,Orientation,X1,Y1): returns new coordinates X1,Y1
 %   after moving from X,Y along Orientation: 0, 90, 180, 270 degrees.
+%   or FALSE if a bump occurs
 
 new_location(X, Y, A, X1, Y1) :-
     get_setup([E,Type|_]),
@@ -946,7 +968,7 @@ display_world :-
     wumpus_health(WH),
     wumpus_location(WLX, WLY),
     %  wumpus_last_action(WAct),
-    %  wumpus_movement_rule(Rule),
+    %  wumpus_select_action(Rule),
     agent_orientation(AA),
     agent_health(AH),
     agent_arrows(N),
@@ -956,7 +978,7 @@ display_world :-
     format('wumpus_health(~w)~n',[WH]),
     format('wumpus_location(~d,~d)~n',[WLX, WLY]),
     %  format('wumpus_last_action(~w)~n',[WAct]),
-    %  format('wumpus_movement_rule(~w)~n',[Rule]),
+    %  format('wumpus_select_action(~w)~n',[Rule]),
     format('agent_location(~d,~d)~n',[X, Y]),
     format('agent_orientation(~d)~n',[AA]),
     format('agent_health(~w)~n',[AH]),
@@ -968,7 +990,7 @@ display_board :-
     (Type == grid ; Type == fig62),
     display_rows(E, E).
 
-display_board.
+display_board. % doesn't display dodecahedron
 
 display_rows(0,E) :-
   !,
@@ -1051,7 +1073,7 @@ ww_retractall :-
     retractall(wumpus_health(_)),
     retractall(wumpus_last_action(_)),
     retractall(wumpus_location(_,_)),
-    retractall(wumpus_movement_rule(_)),
+    retractall(wumpus_move_rule(_)),
     retractall(gold(_,_)),
     retractall(pit(_,_)),
     retractall(bats(_)),
@@ -1059,7 +1081,6 @@ ww_retractall :-
     retractall(gold_probability(_)),
     retractall(max_agent_lifes(_)), 
     retractall(max_agent_actions(_)),
-    retractall(wumpus_move(_)),
     retractall(ww_initial_state(_)),
     assert(ww_initial_state([])).
 
@@ -1137,10 +1158,11 @@ assert_setup :-
     assert(get_setup(Lout)). % default
     %assert(get_setup([random, grid, 4, stander, 64, 1, 0.1, 0.2, no])). % old default
 
-% correct wrong combinations
+% correcting wrong combinations
 % [Size, Type, Move, Gold, Pit, Bat]) 
 % fig62
 check_setup([_, fig62|_], [4, fig62, stander, 1, 3, 0]). % Size 4, fig62, wumpus standing still, 1 gold, 3 pits, no bats 
+    %check_setup_move(Move, M1),
     %[_, fig62, _, _, _, _]=Lin,
     %check_setup_actions(Actions),
     %check_setup_tries(Tries).
@@ -1180,9 +1202,13 @@ check_setup_size(grid, S0, S0) :- S0>=2, S0=<9.
 check_setup_size(grid, _, 4).
 check_setup_size(dodeca, _, 20). 
 % Types of Wumpus Movement 
-check_setup_move(walker, walker).
-check_setup_move(runner, runner).
-check_setup_move(_, stander).
+check_setup_move(walker, walker). % original: moves when it hears a shoot, or you enter its cave
+check_setup_move(runner, runner). % go forward and turn left or right on bumps, maybe on pits
+check_setup_move(wanderer, wanderer). % arbitrarily choses an action from [nil,turnleft,turnright,goforward]
+check_setup_move(spinner, spinner). % goforward, turnleft, repeat.
+check_setup_move(hoarder, hoarder). % go to one of the golds and sit
+check_setup_move(potholer, potholer). % go to a pit and sit
+check_setup_move(_, stander). % do not move (default)
 
 %check_setup_actions(A) :- A>=2, A=<400. % Maximum agent actions 2<=A<=400
 %check_setup_lifes(1).  %check_setup_lifes(T) :- T>=1, T=<5. % Lifes per labirinth
@@ -1228,4 +1254,295 @@ check_setup_hazard(_, _, 3). % Default 3 hazards, size >= 4x4
 
 check_setup_prob(P) :- P>0.0, P<1.0.        % Probability 0.0<P<1.0
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% move the wumpus
+%
+% Types of Wumpus Movement 
+% walker    % original: moves when it hears a shoot, or you enter its cave
+% runner    % go forward and turn left or right on bumps, maybe on pits
+% wanderer  % arbitrarily choses an action from [nil,turnleft,turnright,goforward]
+% spinner   % goforward, turnleft, repeat.
+% hoarder   % go to one of the golds and sit
+% potholer  % go to a pit and sit
+% stander   % do not move (default)
+%
+
+% move_wumpus: Moves the wumpus according to a pre-selected 
+% Rule as defined by wumpus_move_rule(Rule).
+
+move_wumpus(_) :-
+    wumpus_health(dead),
+    !.
+
+move_wumpus(AAct) :-
+    wumpus_health(alive),
+    wumpus_move_rule(Rule),
+    wumpus_select_action(Rule, AAct, WAct),
+    execute_wumpus_action(WAct),
+    retract(wumpus_last_action(_)),
+    assert(wumpus_last_action(WAct)).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% wumpus_select_action(Rule,Action):  Uses wumpus movement Rule to
+%   determine the next action for the wumpus (goforward, turnleft or
+%   turnright).  When adding new rules, be sure to add their rule names
+%   to the  wumpus_movement_rules list above.
+
+% stander: do not move (default)
+
+wumpus_select_action(stander, _, sit).
+
+% wanderer: arbitrarily choses an action from [sit, turnleft, turnright and 2x goforward]
+
+wumpus_select_action(wanderer, _, WAct) :-
+    random_member(WAct, [sit, turnleft, turnright, goforward, goforward]).
+
+% runner: go forward and turn left or right on bumps, maybe on pits
+
+wumpus_select_action(runner, _, WAct) :-
+    wumpus_location(X, Y),
+    wumpus_orientation(WAng),
+    (facing_wall(X, Y, WAng);
+    facing_home(X, Y, WAng)),
+    !,
+    random_member(WAct, [turnleft, turnright]).
+
+wumpus_select_action(runner, _, WAct) :-
+    wumpus_location(X, Y),
+    pit(X, Y),
+    !,
+    random_member(WAct, [turnleft, turnright, goforward, goforward]).
+
+wumpus_select_action(runner, _, goforward).
+
+% spinner: goforward, turnright, repeat.
+
+wumpus_select_action(spinner, _, turnright) :-
+    wumpus_last_action(goforward),
+    !.
+
+wumpus_select_action(spinner, _, goforward).
+
+% hoarder: go to one of the golds and sit
+
+wumpus_select_action(hoarder, _, sit) :- % no gold
+    \+ gold(_,_),
+    !.
+
+wumpus_select_action(hoarder, _, sit) :- % already on top of a gold piece
+    wumpus_location(X, Y),
+    gold(X, Y),
+    !.
+
+wumpus_select_action(hoarder, _, WAct) :- % move towards gold
+    gold(GX, GY),
+    !,           % prevent backtracking on other gold pieces
+    wumpus_location(WX, WY),
+    wumpus_orientation(WAng),
+    move_towards(WX, WY, WAng, GX, GY, WAct).
+
+% spelunker: go to a pit and sit
+
+wumpus_select_action(spelunker, _, sit) :- % no pits
+    \+ pit(_,_),
+    !.
+
+wumpus_select_action(spelunker, _, sit) :- % already in a pit
+    wumpus_location(X, Y),
+    pit(X, Y),
+    !.
+
+wumpus_select_action(spelunker, _, WAct) :- % move towards a pit
+    pit(PX, PY),
+    !,           % prevent backtracking on other pits
+    wumpus_location(WX, WY),
+    wumpus_orientation(WAng),
+    move_towards(WX, WY, WAng, PX, PY, WAct).
+
+% walker : (original) moves when it hears a shoot, or you enter its cave
+
+wumpus_select_action(walker, shoot, WAct) :- % move if hear a shoot
+    !,
+    random_member(WAct, [turnleft, turnright, goforward, goforward]).
+
+wumpus_select_action(walker, _, WAct) :- % or if the agent comes in
+    wumpus_location(X, Y),
+    agent_location(X, Y),
+    !,
+    random_member(WAct, [sit, turnleft, turnright, goforward]).
+
+wumpus_select_action(walker, _, sit). % otherwise, don't move
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% execute_wumpus_action(Action):  Similar to agent movement, where Action is
+%   one of goforward, turnleft or turnright.  Wumpus cannot goforward into
+%   location (1,1).  If goforward succeeds, then check agent's health.
+
+execute_wumpus_action(goforward) :-
+  wumpus_orientation(WAng),
+  wumpus_location(X, Y),
+  new_location(X, Y, WAng, X1, Y1),
+  (X1 > 1 ; Y1 > 1),                % can't go into 1,1
+  !,
+  retract(wumpus_location(X, Y)),   % update location
+  assert(wumpus_location(X1, Y1)),
+  update_agent_health.
+
+execute_wumpus_action(goforward).  % unsuccessfully
+
+execute_wumpus_action(turnleft) :-
+  retract(wumpus_orientation(WAng)),
+  WAng1 is (WAng + 90) mod 360,
+  assert(wumpus_orientation(WAng1)).
+
+execute_wumpus_action(turnright) :-
+  retract(wumpus_orientation(WAng)),
+  WAng1 is (WAng + 270) mod 360,
+  assert(wumpus_orientation(WAng1)).
+
+execute_wumpus_action(sit). % do nothing
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Support predicates
+%
+
+% facing_wall(X,Y,Orient): True if location (X,Y) is next to a wall, and
+%   Orient is facing wall.
+
+facing_wall(X, Y, A) :-
+    get_setup([E, Type|_]),
+    facing_wall_type(X, Y, A, Type, E).
+
+facing_wall_type(1, _, 180, fig62, _).
+facing_wall_type(_, 1, 270, fig62, _).
+facing_wall_type(4, _, 0, fig62, _).
+facing_wall_type(_, 4, 90, fig62, _).
+
+facing_wall_type(1, _, 180, grid, _).
+facing_wall_type(_, 1, 270, grid, _).
+facing_wall_type(E, _, 0, grid, E).
+facing_wall_type(_, E, 90, grid, E).
+
+facing_wall_type(X, _, 90, dodeca, _) :-
+    dodeca_map(L),
+    member([X,[0, _, _, _]], L). % To North is a wall
+facing_wall_type(X, _, 270, dodeca, _) :-
+    dodeca_map(L),
+    member([X,[_, 0, _, _]], L). % To South is a wall
+facing_wall_type(X, _, 0, dodeca, _) :-
+    dodeca_map(L),
+    member([X,[_, _, 0, _]], L). % To East is a wall
+facing_wall_type(X, _, 180, dodeca, _) :-
+    dodeca_map(L),
+    member([X,[_, _, _, 0]], L). % To West is a wall
+
+
+% facing_home(X,Y,Orient):  True if location (X,Y) is next to (1,1), and
+%   Orient is facing (1,1).
+
+facing_home(X, Y, A) :-
+    get_setup([_, Type|_]),
+    facing_home_type(X, Y, A, Type).
+
+facing_home_type(1, 2, 270, T) :-
+    (T == grid ; T == fig62).
+
+facing_home_type(2, 1, 180, T) :-
+    (T == grid ; T == fig62).
+
+facing_home_type(_, 2, 270, dodeca).
+
+
+% move_towards(X1, Y1, Ang, X2, Y2, Action): 
+% If (X1, Y1) == (X2, Y2), action is sit.
+% If (X1, Y1) =\= (X2, Y2), 
+% action is turnleft, turnright or goforward.
+
+move_towards(X1, Y1, _, X1, Y1, sit).
+
+move_towards(X1, Y1, Ang1, X2, Y2, Act) :-
+    get_setup([_, Type|_]),
+    move_towards_type(X1, Y1, Ang1, X2, Y2, Act, Type).
+
+move_towards_type(X1, Y1, Ang1, X2, Y2, Act, T) :-
+    (T == grid ; T == fig62),
+    DX is X2 - X1,
+    DY is Y2 - Y1,
+    AngR is atan(DY, DX),
+    rad2deg(AngR, Ang2),
+    nearest_orientation(Ang2, Ang3),
+    direction_action(Ang1, Ang3, Act).
+
+% adjacent cave
+move_towards_type(X1, _, Ang1, X2, _, Act, dodeca) :-
+    dodeca_map(L),
+    %member([X1,[C1, C2, C3, C4]], L),
+    member([X1, Adj], L),
+    %member(X2, Adj),
+    %Adj = [C1, C2, C3, C4],
+    nth0(I, Adj, X2),
+    !,
+    Ang2 is I * 90,
+    direction_action(Ang1, Ang2, Act).
+
+% distant cave, increasing
+move_towards_type(X1, _, Ang1, X2, _, Act, dodeca) :-
+    move_dodeca_adjacent(X1, Xadj, X2),
+    !,
+    move_towards_type(X1, _, Ang1, Xadj, _, Act, dodeca).
+%    dodeca_map(L),
+%    member([X1, Adj], L),
+%    nth0(I, Adj, Xadj),
+%    Ang2 is I * 90,
+%    direction_action(Ang1, Ang2, Act).
+
+% distant cave, increasing
+move_dodeca_adjacent(X1, Xadj, X2) :-
+    X1 < X2,
+    dodeca_map(L),
+    member([X1, Adj], L),
+    max_list(Adj, Xadj).
+
+% distant cave, decreasing
+move_dodeca_adjacent(X1, Xadj, X2) :-
+    X1 > X2,
+    dodeca_map(L),
+    member([X1, Adj], L),
+    delete(Adj, 0, Vadj),
+    min_list(Vadj, Xadj).
+
+% nearest_orientation(Angle,Orient):  Orient is the nearest orientation
+%   (0, 90, 180, 270) to angle (in degrees), where 0 <= A < 360.
+
+nearest_orientation(A, 0) :- (A =< 45 ; A > 315 ), !.
+nearest_orientation(A, 90) :- A > 45, A =< 135, !.
+nearest_orientation(A, 180) :- A > 135, A =< 225, !.
+nearest_orientation(_, 270).
+
+% direction_action(Orient1,Orient2,Action): Action = goforward if
+%   Orient1=Orient2.  Otherwise, Action is turnleft or turnright
+%   according to the difference between Orient1 and Orient2.
+
+direction_action(270, 0, turnleft) :- !.
+direction_action(0, 270, turnright) :- !.
+direction_action(A1, A2, turnleft) :- A1 < A2, !.
+direction_action(A1, A2, turnright) :- A1 > A2, !.
+direction_action(_, _, goforward).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% converts radians to degrees
+
+rad2deg(R, D) :-
+    R >= 0.0,
+    !,  
+    Dp is R * 180.0 / pi, 
+    D is integer(Dp).
+
+rad2deg(R, D) :-
+    R < 0.0,
+    Rp is R + 2.0 * pi, 
+    rad2deg(Rp, D). 
 
