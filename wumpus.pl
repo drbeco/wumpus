@@ -1207,7 +1207,7 @@ check_setup_move(runner, runner). % go forward and turn left or right on bumps, 
 check_setup_move(wanderer, wanderer). % arbitrarily choses an action from [sil,turnleft,turnright,goforward]
 check_setup_move(spinner, spinner). % goforward, turnleft, repeat.
 check_setup_move(hoarder, hoarder). % go to one of the golds and sit
-check_setup_move(potholer, potholer). % go to a pit and sit
+check_setup_move(spelunker, spelunker). % go to a pit and sit
 check_setup_move(_, stander). % do not move (default)
 
 %check_setup_actions(A) :- A>=2, A=<400. % Maximum agent actions 2<=A<=400
@@ -1264,7 +1264,7 @@ check_setup_prob(P) :- P>0.0, P<1.0.        % Probability 0.0<P<1.0
 % wanderer  % arbitrarily choses an action from [sit,turnleft,turnright,goforward]
 % spinner   % goforward, turnleft, repeat.
 % hoarder   % go to one of the golds and sit
-% potholer  % go to a pit and sit
+% spelunker % go to a pit and sit
 % stander   % do not move (default)
 %
 
