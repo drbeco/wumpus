@@ -36,7 +36,7 @@
 % A Prolog implementation of the Wumpus world described in Russell and
 % Norvig's "Artificial Intelligence: A Modern Approach", Section 6.2.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Version 4.0.20160625.233148, by Beco
+% Version 4.1 by Beco
 %
 % World Setup: 
 %
@@ -93,9 +93,7 @@
 %   * +1000 points for each gold AFTER climbing alive
 %   * +500 points for killing the Wumpus
 %   * -500 for dying (1. eaten alive by wumpus, 2. falling into a pit, 3. walking until exhausted)
-%
-% TODO:
-% New hazard: bats! Move you to a random location.
+%   * -1 for action (sit, turnright, turnleft, goforward, grab, shoot, climb)
 %
 
 % Protect all predicates (make private), except the ones listed bellow:
@@ -164,12 +162,19 @@ go :- goforward.
 goforward :- manual_execute(goforward).
 turn :- turnright.
 turnr :- turnright.
+tr :- turnright.
 turnright :- manual_execute(turnright).
 turnl :- turnleft.
+tl :- turnleft.
 turnleft :- manual_execute(turnleft).
+gr :- grab.
 grab :- manual_execute(grab).
+sh :- shoot.
 shoot :- manual_execute(shoot).
+cl :- climb.
 climb :- manual_execute(climb).
+si :- sit.
+sit :- manual_execute(sit).
 
 manual_execute(A) :-
     agent_num_actions(N), % current action
@@ -370,20 +375,14 @@ hazard_squares(E, dodeca, HS) :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 % dodeca_map : mapping dodecahedron tunnels. 
-% For each Cave from 1 to 20, there are only 3 tunnels Tn not 0
+% For each Cave from 1 to 20, there are exactly 3 tunnels Cn =\= 0
 % [Cave1, [ C0, C1, C2, C3]], ..., [Cave20, [C0, C1, C2, C3]]
-% old:
-% --- T1 = North / up    / 90
-% --- T2 = South / down  / 270
-% --- T3 = East  / right / 0
-% --- T4 = West  / left  / 180
-% new:
+% 
 % C0 = East  / right / 0
 % C1 = North / up    / 90
 % C2 = West  / left  / 180
 % C3 = South / down  / 270
 
-%dodeca_map([[1, [6, 0, 2, 5]], [2, [3, 1, 0, 7]], [3, [0, 8, 2, 4]], [4, [0, 9, 3, 5]], [5, [4, 1, 10, 0]], [6, [0, 1, 11, 15]], [7, [12, 11, 2, 0]], [8, [3, 12, 0, 13]], [9, [4, 14, 13, 0]], [10, [14, 15, 0, 5]], [11, [16, 6, 7, 0]], [12, [8, 7, 0, 17]], [13, [0, 18, 8, 9]], [14, [9, 10, 19, 0]], [15, [20, 6, 0, 10]], [16, [17, 11, 0, 20]], [17, [18, 16, 12, 0]], [18, [13, 0, 17, 19]], [19, [18, 20, 0, 14]], [20, [19, 15, 16, 0]]]).
 dodeca_map([
     [1, [2, 8, 5, 0]],      % Cave  1: east 2,    north 8,    west 5,    south none
     [2, [0, 3, 10, 1]],     % Cave  2: east none, north 3,    west 10,   south 1
@@ -412,7 +411,6 @@ dodeca_map([
 %   grid: size Extent by Extent.
 %   dodeca: 20 rooms, [Room Number, Room Level]
 
-%all_squares(dodeca, 20, [[1,1],[2,2],[5,2],[6,2],[3,3],[7,3],[4,3],[10,3],[11,3],[15,3],[8,4],[12,4],[9,4],[14,4],[16,4],[20,4],[13,5],[17,5],[19,5],[18,6]]).
 all_squares(dodeca, 20, [[1,1],[2,2],[3,3],[4,3],[5,2],[6,3],[7,3],[8,2],[9,3],[10,3],[11,4],[12,4],[13,5],[14,4],[15,4],[16,5],[17,4],[18,4],[19,5],[20,6]]).
 
 all_squares(grid, Extent, AllSqrs) :-
@@ -567,16 +565,19 @@ execute(climb,[Stench,Breeze,Glitter,no,no]) :-
     breeze(Breeze),
     glitter(Glitter).
 
+execute(sit,[Stench,Breeze,Glitter,no,no]) :-
+    decrement_score,
+    move_wumpus(sit),       % move wumpus according to the rule set
+    update_agent_health,    % check for wumpus, pit or max actions
+    stench(Stench),
+    breeze(Breeze),
+    glitter(Glitter).
+    
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Perceptions [Stench,Breeze,Glitter,Bump,Scream]
 
 % stench(Stench): Stench = yes if wumpus (dead or alive) is in a square
 %   directly up, down, left, or right of the current agent location.
-
-%stench(yes) :-
-%    agent_location(X,Y),
-%    wumpus_location(X,Y),
-%    !.
 
 stench(yes) :-
     agent_location(X,Y),
@@ -837,12 +838,6 @@ addto_ww_init_state(Fact) :-
     list_to_set([Fact|L],S), % avoid duplicates
     assert(ww_initial_state(S)).
 
-%assert_once(Fact):-
-%    \+( Fact ), !,
-%    assert(Fact).
-%
-%assert_once(_).
-
 % assert_list(L): Assert all facts on list L.
 assert_list([]).
 
@@ -879,6 +874,7 @@ check_agent_action_which(turnleft).
 check_agent_action_which(shoot).
 check_agent_action_which(grab).
 check_agent_action_which(climb).
+check_agent_action_which(sit).
 check_agent_action_which(_) :- format("Agent gave unknow action!~n"), !, fail.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -922,17 +918,11 @@ assert_setup :-
 
 % fig62
 check_setup([_, fig62|_], [4, fig62, stander, 1, 3, 0]). % Size 4, fig62, wumpus standing still, 1 gold, 3 pits, no bats 
-    %check_setup_move(Move, M1),
-    %[_, fig62, _, _, _, _]=Lin,
-    %check_setup_actions(Actions),
-    %check_setup_tries(Tries).
 
 % grid
 check_setup([Size, grid, Move, Gold, Pit, Bat], [S1, grid, M1, G1, P1, B1]) :-
-    %[Size, grid, Move, Gold, Pit, Bat]=Lin,
     check_setup_size(grid, Size, S1), 
     check_setup_move(Move, M1),
-    %check_setup_actions(Actions),
     %check_setup_lifes(Lifes),
     check_setup_gold(Gold, S1, G1),
     check_setup_hazard(Pit, S1, P1), % Qtd pits, size, Qtd Pits validated
@@ -942,11 +932,10 @@ check_setup([Size, grid, Move, Gold, Pit, Bat], [S1, grid, M1, G1, P1, B1]) :-
 check_setup([_, dodeca, Move, Gold, Pit, Bat], [S1, dodeca, M1, G1, P1, B1]) :-
     check_setup_size(dodeca, 20, S1), 
     check_setup_move(Move, M1),
-    %check_setup_actions(Actions),
     %check_setup_lifes(Lifes),
     check_setup_gold(Gold, S1, G1),
     check_setup_hazard(Pit, S1, P1),
-    check_setup_hazard(Bat, S1, B1). % BUG conferir
+    check_setup_hazard(Bat, S1, B1).
 
 % Map size (or extension)
 check_setup_size(grid, S0, S0) :- S0>=2, S0=<9.
@@ -962,7 +951,6 @@ check_setup_move(hoarder, hoarder). % go to one of the golds and sit
 check_setup_move(spelunker, spelunker). % go to a pit and sit
 check_setup_move(_, stander). % do not move (default)
 
-%check_setup_actions(A) :- A>=2, A=<400. % Maximum agent actions 2<=A<=400
 %check_setup_lifes(1).  %check_setup_lifes(T) :- T>=1, T=<5. % Lifes per labirinth
 
 % Gold, Pit and Bat : integer, fixed number; float, probability
@@ -1113,6 +1101,8 @@ wumpus_select_action(walker, _, WAct) :- % or if the agent comes in
 
 wumpus_select_action(walker, _, sit). % otherwise, don't move
 
+% TODO stalker : once it smells the Agent, it keeps following him
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % execute_wumpus_action(Action):  Similar to agent movement, where Action is
 %   one of goforward, turnleft or turnright.  Wumpus cannot goforward into
@@ -1147,8 +1137,7 @@ execute_wumpus_action(sit). % do nothing
 % Support predicates
 %
 
-% facing_wall(X,Y,Orient): True if location (X,Y) is next to a wall, and
-%   Orient is facing wall.
+% facing_wall(X,Y,Orient): True if location (X,Y) is next to a wall, and orientation is facing wall.
 
 facing_wall(X, Y, A) :-
     get_setup([E, Type|_]),
@@ -1177,8 +1166,7 @@ facing_wall_type(X, _, 270, dodeca, _) :-
     dodeca_map(L),
     member([X,[_, _, _, 0]], L). % To South is a wall
 
-% facing_home(X,Y,Orient):  True if location (X,Y) is next to (1,1), and
-%   Orient is facing (1,1).
+% facing_home(X,Y,Orient):  True if location (X,Y) is next to (1,1), and orientation is facing (1,1).
 
 facing_home(X, Y, A) :-
     get_setup([_, Type|_]),
@@ -1310,10 +1298,11 @@ has_hazard_type(X, _, F, dodeca) :-
       call(F, C3, _) ;
       call(F, X, _) ).
 
-% success with probability P
+% maybe/1: success with probability P
 maybe(P) :-
     random(N),
     N<P.
+% maybe/0: success with probability 0.5
 maybe :- maybe(0.5).
 
 % propagate_arrow(X,Y,Angle,Scream): If wumpus is at X,Y then hear its
