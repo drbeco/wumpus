@@ -124,6 +124,7 @@
     wumpus_move_rule/1,     % ww Wumpus movement rule: walker, runner, wanderer, spinner, hoarder, spelunker, stander 
     gold/2,                 % ww Gold positions
     pit/2,                  % ww Pit positions
+    bat/2,                  % ww Bat positions
     agent_location/2,       % ww (X,Y) on grid; (CaveNumber, Level) on dodeca;
     agent_orientation/1,    % ww Agent orientation: 0/East/Right, 90/North/Up, 180/West/Left, 270/South/Down
     agent_in_cave/1,        % ww Agent is inside cave: yes/no
@@ -134,6 +135,7 @@
     agent_num_actions/1,    % ww Number of the current agent action
     gold_probability/1,     % ww Probability that a location has gold (default 0.10)
     pit_probability/1,      % ww Probability that a non-(1,1) location has a pit (default 0.20)
+    bat_probability/1,      % ww Probability that a non-(1,1) location has a bat (default 0.10)
     max_agent_lifes/1,      % ww Maximum agent tries (climb or die) per world (default 1)
     max_agent_actions/1,    % ww Maximum actions per trial allowed by agent (default 64)
     ww_initial_state/1      % list of ww configuration values
@@ -288,7 +290,7 @@ initialize([Stench,no,no,no,no]) :-
 
 % initialize_world: gather information
 initialize_world :-
-    ww_retractall, %retract wumpus, gold and pit
+    ww_retractall, %retract wumpus, gold, pit and bat
     assert_setup, % assert user or default setup
     get_setup(L), %[Size, Type, Move, Gold, Pit, Bat]), 
     L=[Size, _, Move, Gold, Pit, Bat],
@@ -571,10 +573,10 @@ execute(climb,[Stench,Breeze,Glitter,no,no]) :-
 % stench(Stench): Stench = yes if wumpus (dead or alive) is in a square
 %   directly up, down, left, or right of the current agent location.
 
-stench(yes) :-
-    agent_location(X,Y),
-    wumpus_location(X,Y),
-    !.
+%stench(yes) :-
+%    agent_location(X,Y),
+%    wumpus_location(X,Y),
+%    !.
 
 stench(yes) :-
     agent_location(X,Y),
@@ -723,49 +725,52 @@ display_board :-
 
 display_board. % doesn't display dodecahedron
 
-display_rows(0,E) :-
+display_rows(0, E) :-
     !,
     display_dashes(E).
 
-display_rows(Row,E) :-
+display_rows(Row, E) :-
     display_dashes(E),
-    display_row(Row,E),
+    display_1row(Row, E),
     Row1 is Row - 1,
-    display_rows(Row1,E).
+    display_rows(Row1 ,E).
 
-display_row(Row,E) :-
-    display_square(1,Row,E).
+display_1row(Row, E) :-
+    display_square(1, Row, E).
 
-display_square(X,_,E) :-
+display_square(X, _, E) :-
     X > E,
     !,
     format('|~n',[]).
 
-display_square(X,Y,E) :-
-    format('| ',[]),
-    display_info(X,Y),
+display_square(X, Y, E) :-
+    format('|', []),
+    display_info(X, Y),
     X1 is X + 1,
-    display_square(X1,Y,E).
+    display_square(X1, Y, E).
 
-display_info(X,Y) :-
-    display_location_fact(wumpus_location,X,Y,'W'),
-    display_location_fact(agent_location,X,Y,'A'),
-    display_location_fact(pit,X,Y,'P'),
-    display_location_fact(gold,X,Y,'G').
+% display the letters 'W ', 'A ', 'P ' or 'G ', or spaces
+display_info(X, Y) :-
+    display_location_fact(wumpus_location, X, Y, 'W'),
+    display_location_fact(agent_location, X, Y, 'A'),
+    display_location_fact(pit, X, Y, 'P'),
+    display_location_fact(bat, X, Y, 'B'),
+    display_location_fact(gold, X, Y, 'G').
 
-display_location_fact(Functor,X,Y,Atom) :-
-    Fact =.. [Functor,X,Y],
-    Fact,
+display_location_fact(Functor, X, Y, Atom) :-
+    Fact =.. [Functor, X, Y], % Fact = gold(X, Y)
+    Fact, % is Fact true?
     !,
-    format('~w ',[Atom]).
+    format('~w',[Atom]).
 
-display_location_fact(_,_,_,_) :-
-    format('  ',[]).
+display_location_fact(_, _, _, _) :-
+    format(' ',[]).
 
+% display -----------------------
 display_dashes(E) :-
-    RowLen is (E * 10) + 1,
-    name('-',[Dash]),
-    format('~*c~n',[RowLen,Dash]).
+    RowLen is (E * 6) + 1,
+    name('-', [Dash]),
+    format('~*c~n', [RowLen, Dash]).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Dynamic facts
@@ -791,7 +796,7 @@ assert_list([Fact|Facts]) :-
     assert(Fact), % assert_once(Fact),
     assert_list(Facts).
 
-% retract wumpus, gold and pit
+% retract wumpus, gold, pit and bat
 ww_retractall :-
     retractall(world_extent(_)),
     retractall(wumpus_orientation(_)),
@@ -801,8 +806,9 @@ ww_retractall :-
     retractall(wumpus_move_rule(_)),
     retractall(gold(_,_)),
     retractall(pit(_,_)),
-    retractall(bats(_)),
+    retractall(bat(_,_)),
     retractall(pit_probability(_)),
+    retractall(bat_probability(_)),
     retractall(gold_probability(_)),
     retractall(max_agent_lifes(_)), 
     retractall(max_agent_actions(_)),
