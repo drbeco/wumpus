@@ -106,11 +106,18 @@
     turnright/0,    % manually turns to right / clockwise
     turn/0,         % shortcut for turnright
     turnr/0,        % shortcut for turnright
+    tr/0,           % shortcut for turnright
     turnleft/0,     % manually turns to left / anti-clockwise
     turnl/0,        % shortcut for turnleft
+    tl/0,           % shortcut for turnleft
     grab/0,         % manually grabs something (gold, arrow, ...)
+    gr/0,           % shortcut for grab
     shoot/0,        % manually shoots an arrow
-    climb/0]).      % manually climbs out the cave
+    sh/0,           % shortcut for shoot
+    sit/0,          % sit and do nothing
+    si/0,           % shortcut for sit
+    climb/0,        % manually climbs out the cave
+    cl/0]).         % shortcut for climb
 
 :- dynamic([
     get_setup/1,            % get world setup (from world_setup or from default setup)
