@@ -43,7 +43,7 @@
 % world_setup([S, T, M, G, P, B]).
 % 1. Size: 2..20, with some constrictions: [2-9] grid; 20, dodeca; 4, fig62
 % 2. Type: fig62, grid or dodeca
-% 3. Move: stander, walker, runner
+% 3. Move: walker, runner, wanderer, spinner, hoarder, spelunker, stander, trapper and bulldozer
 % 4. Gold: Integer is deterministic number, float from 0.0<G<1.0 is probabilistic
 % 5. Pits: Idem, 0 is no pits.
 % 6. Bats: Idem, 0 is no bats.
@@ -77,6 +77,8 @@
 %       hoarder   : go to one of the golds and sit
 %       spelunker : go to a pit and sit
 %       stander   : do not move (default)
+%       trapper   : goes hunting agent as soon as it leaves [1,1]; goes home otherwise
+%       bulldozer : hunt the agent as soon as it smells him
 %
 %      Actions:     - 4 per square
 %      Tries:       - Number of trials (TODO, now fixed 1)
@@ -126,7 +128,7 @@
     wumpus_health/1,        % ww Wumpus health: alive/dead
     wumpus_orientation/1,   % ww Wumpus orientation: 0, 90, 180, 270
     wumpus_last_action/1,   % ww Wumpus last action
-    wumpus_move_rule/1,     % ww Wumpus movement rule: walker, runner, wanderer, spinner, hoarder, spelunker, stander
+    wumpus_move_rule/1,     % ww Wumpus movement rule: walker, runner, wanderer, spinner, hoarder, spelunker, stander, trapper, bulldozer
     gold/2,                 % ww Gold positions
     pit/2,                  % ww Pit positions
     bat/2,                  % ww Bat positions
@@ -883,7 +885,7 @@ check_agent_action_which(_) :- format("Agent gave unknow action!~n"), !, fail.
 % world_setup
 %    1.   Size: 2..20, with some constrictions: [2-9] grid; 20, dodeca; 4, fig62
 %    2.   Type: fig62, grid or dodeca
-%    3.   Move: stander, walker, runner (wumpus movement)
+%    3.   Move:  walker, runner, wanderer, spinner, hoarder, spelunker, stander, trapper, bulldozer
 %    4.   Gold: Integer is deterministic number, float from 0.0<G<1.0 is probabilistic
 %    5.   Pits: Idem, 0 is no pits.
 %    6.   Bats: Idem, 0 is no bats.
@@ -949,6 +951,8 @@ check_setup_move(wanderer, wanderer). % arbitrarily choses an action from [sil,t
 check_setup_move(spinner, spinner). % goforward, turnleft, repeat.
 check_setup_move(hoarder, hoarder). % go to one of the golds and sit
 check_setup_move(spelunker, spelunker). % go to a pit and sit
+check_setup_move(trapper, trapper). % hunt the agent from distance
+check_setup_move(bulldozer, bulldozer). % hunt the agent if smell it
 check_setup_move(_, stander). % do not move (default)
 
 %check_setup_lifes(1).  %check_setup_lifes(T) :- T>=1, T=<5. % Lifes per labirinth
@@ -993,6 +997,8 @@ check_setup_prob(P) :- P>0.0, P<1.0.  % Probability 0.0<P<1.0
 % hoarder   % go to one of the golds and sit
 % spelunker % go to a pit and sit
 % stander   % do not move (default)
+% trapper   % goes hunting agent as soon as it leaves [1,1]; goes home otherwise
+% bulldozer % hunt the agent as soon as it smells him
 %
 
 % move_wumpus: Moves the wumpus according to a pre-selected
@@ -1101,7 +1107,94 @@ wumpus_select_action(walker, _, WAct) :- % or if the agent comes in
 
 wumpus_select_action(walker, _, sit). % otherwise, don't move
 
-% TODO stalker : once it smells the Agent, it keeps following him
+% bulldozer : once it smells the Agent, it keeps following him
+
+wumpus_select_action(bulldozer, _, WAct) :- % if agent smelling and not at [1,1], hunt!
+    agent_location(AX, AY),
+    [AX, AY] \== [1, 1],
+    stench(yes),
+    !,
+    wumpus_location(WX, WY),
+    wumpus_orientation(WAng),
+    move_towards(WX, WY, WAng, AX, AY, WAct).
+
+wumpus_select_action(bulldozer, _, WAct) :- % if agent smells decaying, maybe sit, maybe hunt, hunt, hunt!
+    agent_location(AX, AY),
+    [AX, AY] \== [1, 1],
+    wumpus_location(WX, WY),
+    (distance2(AX, AY, WX, WY) ; diagonal(AX, AY, WX, WY)),
+    !,
+    wumpus_orientation(WAng),
+    move_towards(WX, WY, WAng, AX, AY, Tow),
+    random_member(WAct, [sit, Tow, Tow, Tow]).
+
+wumpus_select_action(bulldozer, _, WAct) :- % if agent at [1,1] or not stench random 
+    random_member(WAct, [sit, sit, turnleft, turnright, goforward]).
+
+% trapper : goes for the kill even from distance. The only safe place is [1,1]
+
+wumpus_select_action(trapper, _, WAct) :- % agent at [1,1] go home
+    agent_location(1, 1),
+    !,
+    wumpus_location(WX, WY),
+    wumpus_orientation(WAng),
+    wumpus_home(HX, HY),
+    move_towards(WX, WY, WAng, HX, HY, WAct).
+
+wumpus_select_action(trapper, _, WAct) :- % agent not at [1,1], go for the kill
+    agent_location(AX, AY),
+    wumpus_location(WX, WY),
+    wumpus_orientation(WAng),
+    move_towards(WX, WY, WAng, AX, AY, WAct).
+
+wumpus_home(HX, HY) :-
+    get_setup([E,Type|_]),
+    wumpus_home_type(HX, HY, Type, E).
+
+wumpus_home_type(1, 3, fig62, 4).
+wumpus_home_type(E, E, grid, E).
+wumpus_home_type(20, 6, dodeca, 20).
+
+diagonal(X1, Y1, X2, Y2) :- % only grid/fig62 makes sense
+    get_setup([_,T|_]),
+    diagonal_type(X1, Y1, X2, Y2, T).
+
+diagonal_type(X1, Y1, X2, Y2, T) :- % only grid/fig62 makes sense
+    (T == grid ; T == fig62),
+    Xi is X1 - 1,
+    Xf is X1 + 1,
+    Yi is Y1 - 1,
+    Yf is Y1 + 1,
+    ([Xi, Yi] == [X2, Y2] ;
+     [Xi, Yf] == [X2, Y2] ;
+     [Xf, Yi] == [X2, Y2] ;
+     [Xf, Yf] == [X2, Y2] ).
+
+distance2(X1, Y1, X2, Y2) :-
+    get_setup([_,T|_]),
+    distance2_type(X1, Y1, X2, Y2, T).
+
+distance2_type(X1, Y1, X2, Y2, T) :-
+    (T == grid ; T == fig62),
+    Xi is X1 - 2,
+    Xf is X1 + 2,
+    Yi is Y1 - 2,
+    Yf is Y1 + 2,
+    ([X1, Yi] == [X2, Y2] ;
+     [X1, Yf] == [X2, Y2] ;
+     [Xi, Y1] == [X2, Y2] ;
+     [Xf, Y1] == [X2, Y2] ).
+
+distance2_type(X1, _, X2, _, dodeca) :-
+    dodeca_map(L),
+    member([X1, Zero], L),
+    delete(Zero, 0, [T1, T2, T3]),
+    member([T1, Adj1], L),
+    member([T2, Adj2], L),
+    member([T3, Adj3], L),
+    (member(X2, Adj1) ;
+     member(X2, Adj2) ;
+     member(X2, Adj3) ).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % execute_wumpus_action(Action):  Similar to agent movement, where Action is
