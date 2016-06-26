@@ -296,7 +296,7 @@ initialize_world :-
     addto_ww_init_state(world_extent(Size)),
     addto_ww_init_state(wumpus_orientation(0)),
     addto_ww_init_state(wumpus_health(alive)),
-    addto_ww_init_state(wumpus_last_action(nil)),
+    addto_ww_init_state(wumpus_last_action(sit)),
     addto_ww_init_state(gold_probability(Gold)),     % Probability that a location has gold
     addto_ww_init_state(pit_probability(Pit)),       % Probability that a non-(1,1) location has a pit
     addto_ww_init_state(bat_probability(Bat)),       % Probability that a location has bats
@@ -1204,7 +1204,7 @@ check_setup_size(dodeca, _, 20).
 % Types of Wumpus Movement 
 check_setup_move(walker, walker). % original: moves when it hears a shoot, or you enter its cave
 check_setup_move(runner, runner). % go forward and turn left or right on bumps, maybe on pits
-check_setup_move(wanderer, wanderer). % arbitrarily choses an action from [nil,turnleft,turnright,goforward]
+check_setup_move(wanderer, wanderer). % arbitrarily choses an action from [sil,turnleft,turnright,goforward]
 check_setup_move(spinner, spinner). % goforward, turnleft, repeat.
 check_setup_move(hoarder, hoarder). % go to one of the golds and sit
 check_setup_move(potholer, potholer). % go to a pit and sit
@@ -1261,7 +1261,7 @@ check_setup_prob(P) :- P>0.0, P<1.0.        % Probability 0.0<P<1.0
 % Types of Wumpus Movement 
 % walker    % original: moves when it hears a shoot, or you enter its cave
 % runner    % go forward and turn left or right on bumps, maybe on pits
-% wanderer  % arbitrarily choses an action from [nil,turnleft,turnright,goforward]
+% wanderer  % arbitrarily choses an action from [sit,turnleft,turnright,goforward]
 % spinner   % goforward, turnleft, repeat.
 % hoarder   % go to one of the golds and sit
 % potholer  % go to a pit and sit
