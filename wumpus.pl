@@ -369,35 +369,64 @@ hazard_squares(E, dodeca, HS) :-
 %
 % dodeca_map : mapping dodecahedron tunnels. 
 % For each Cave from 1 to 20, there are only 3 tunnels Tn not 0
-% [Cave1, [ T1, T2, T3, T4]], ..., [Cave20, ...]
-% T1 = North / up    / 90
-% T2 = South / down  / 270
-% T3 = East  / right / 0
-% T4 = West  / left  / 180
+% [Cave1, [ C0, C1, C2, C3]], ..., [Cave20, [C0, C1, C2, C3]]
+% old:
+% --- T1 = North / up    / 90
+% --- T2 = South / down  / 270
+% --- T3 = East  / right / 0
+% --- T4 = West  / left  / 180
+% new:
+% C0 = East  / right / 0
+% C1 = North / up    / 90
+% C2 = West  / left  / 180
+% C3 = South / down  / 270
 
-dodeca_map([[1, [6, 0, 2, 5]], [2, [3, 1, 0, 7]], [3, [0, 8, 2, 4]], [4, [0, 9, 3, 5]], [5, [4, 1, 10, 0]], [6, [0, 1, 11, 15]], [7, [12, 11, 2, 0]], [8, [3, 12, 0, 13]], [9, [4, 14, 13, 0]], [10, [14, 15, 0, 5]], [11, [16, 6, 7, 0]], [12, [8, 7, 0, 17]], [13, [0, 18, 8, 9]], [14, [9, 10, 19, 0]], [15, [20, 6, 0, 10]], [16, [17, 11, 0, 20]], [17, [18, 16, 12, 0]], [18, [13, 0, 17, 19]], [19, [18, 20, 0, 14]], [20, [19, 15, 16, 0]]]).
+%dodeca_map([[1, [6, 0, 2, 5]], [2, [3, 1, 0, 7]], [3, [0, 8, 2, 4]], [4, [0, 9, 3, 5]], [5, [4, 1, 10, 0]], [6, [0, 1, 11, 15]], [7, [12, 11, 2, 0]], [8, [3, 12, 0, 13]], [9, [4, 14, 13, 0]], [10, [14, 15, 0, 5]], [11, [16, 6, 7, 0]], [12, [8, 7, 0, 17]], [13, [0, 18, 8, 9]], [14, [9, 10, 19, 0]], [15, [20, 6, 0, 10]], [16, [17, 11, 0, 20]], [17, [18, 16, 12, 0]], [18, [13, 0, 17, 19]], [19, [18, 20, 0, 14]], [20, [19, 15, 16, 0]]]).
+dodeca_map([
+    [1, [2, 8, 5, 0]],      % Cave  1: east 2,    north 8,    west 5,    south none
+    [2, [0, 3, 10, 1]],     % Cave  2: east none, north 3,    west 10,   south 1
+    [3, [2, 0, 4, 12]],     % Cave  3: east 2,    north none, west 4,    south 12
+    [4, [3, 0, 5, 14]],     % Cave  4: east 3,    north none, west 5,    south 14
+    [5, [6, 4, 0, 1]],      % Cave  5: east 6,    north 4,    west none, south 1
+    [6, [0, 15, 5, 7]],     % Cave  6: east none, north 15,   west 5,    south 7
+    [7, [0, 17, 6, 8]],     % Cave  7: east none, north 17,   west 6,    south 8
+    [8, [9, 0, 7, 1]],      % Cave  8: east 9,    north none, west 7,    south 1
+    [9, [10, 18, 0, 8]],    % Cave  9: east 10,   north 18,   west none, south 8
+    [10, [2, 11, 0, 9]],    % Cave 10: east 2,    north 11,   west none, south 9
+    [11, [0, 12, 19, 10]],  % Cave 11: east none, north 12,   west 19,   south 10
+    [12, [0, 3, 13, 11]],   % Cave 12: east none, north 3,    west 13,   south 11
+    [13, [12, 0, 14, 20]],  % Cave 13: east 12,   north none, west 14,   south 20
+    [14, [13, 4, 0, 15]],   % Cave 14: east 13,   north 4,    west none, south 15
+    [15, [16, 14, 0, 6]],   % Cave 15: east 16,   north 14,   west none, south 6
+    [16, [0, 20, 15, 17]],  % Cave 16: east none, north 20,   west 15,   south 17
+    [17, [18, 16, 0, 7]],   % Cave 17: east 18,   north 16,   west none, south 7
+    [18, [0, 19, 17, 9]],   % Cave 18: east none, north 19,   west 17,   south 9
+    [19, [11, 20, 0, 18]],  % Cave 19: east 11,   north 20,   west none, south 18
+    [20, [19, 13, 16, 0]]   % Cave 20: east 19,   north 13,   west 16,   south none
+    ]).
 
 % all_squares(Extent,AllSqrs): AllSqrs is the list of all possible
 %   squares [X,Y] in a wumpus world of 
 %   grid: size Extent by Extent.
 %   dodeca: 20 rooms, [Room Number, Room Level]
 
-all_squares(dodeca, 20, [[1,1],[2,2],[5,2],[6,2],[3,3],[7,3],[4,3],[10,3],[11,3],[15,3],[8,4],[12,4],[9,4],[14,4],[16,4],[20,4],[13,5],[17,5],[19,5],[18,6]]).
+%all_squares(dodeca, 20, [[1,1],[2,2],[5,2],[6,2],[3,3],[7,3],[4,3],[10,3],[11,3],[15,3],[8,4],[12,4],[9,4],[14,4],[16,4],[20,4],[13,5],[17,5],[19,5],[18,6]]).
+all_squares(dodeca, 20, [[1,1],[2,2],[3,3],[4,3],[5,2],[6,3],[7,3],[8,2],[9,3],[10,3],[11,4],[12,4],[13,5],[14,4],[15,4],[16,5],[17,4],[18,4],[19,5],[20,6]]).
 
 all_squares(grid, Extent, AllSqrs) :-
-  all_squares_1(Extent,1,1,AllSqrs).
+    all_squares_1(Extent,1,1,AllSqrs).
 
 all_squares_1(Extent,Extent,Extent,[[Extent,Extent]]).
 
 all_squares_1(Extent,Row,Extent,[[Row,Extent]|RestSqrs]) :-
-  Row < Extent,
-  Row1 is Row + 1,
-  all_squares_1(Extent,Row1,1,RestSqrs).
+    Row < Extent,
+    Row1 is Row + 1,
+    all_squares_1(Extent,Row1,1,RestSqrs).
 
 all_squares_1(Extent,Row,Col,[[Row,Col]|RestSqrs]) :-
-  Col < Extent,
-  Col1 is Col + 1,
-  all_squares_1(Extent,Row,Col1,RestSqrs).
+    Col < Extent,
+    Col1 is Col + 1,
+    all_squares_1(Extent,Row,Col1,RestSqrs).
 
 % place_objects(Object,P,Squares): For each square in Squares, place
 %   Object at square with probability P.
@@ -420,14 +449,14 @@ place_it(Ob, Qt, Sq) :-
 place_objects_prob(_, _, []).
 
 place_objects_prob(Object, P, [Sq|Squares]) :-
-  maybe(P),   % succeeds with probability P
-  !,
-  Fact =.. [Object|Sq], % Fact = pit(X,Y)
-  addto_ww_init_state(Fact),
-  place_objects_prob(Object, P, Squares).
+    maybe(P),   % succeeds with probability P
+    !,
+    Fact =.. [Object|Sq], % Fact = pit(X,Y)
+    addto_ww_init_state(Fact),
+    place_objects_prob(Object, P, Squares).
 
 place_objects_prob(Object, P, [_|Squares]) :-
-  place_objects_prob(Object, P, Squares).
+    place_objects_prob(Object, P, Squares).
 
 place_objects_det(_, _, []).
 
@@ -459,82 +488,82 @@ place_objects_det(Obj, Qtd, [H|T]) :-
 %     a value of either 'yes' or 'no'.
 
 execute(_,[no,no,no,no,no]) :-
-  agent_health(dead), !,         % agent must be alive to execute actions
-  format("You are dead!~n",[]).
+    agent_health(dead), !,         % agent must be alive to execute actions
+    format("You are dead!~n",[]).
 
 execute(_,[no,no,no,no,no]) :-
-  agent_in_cave(no), !,         % agent must be in the cave
-  format("You have left the cave.~n",[]).
+    agent_in_cave(no), !,         % agent must be in the cave
+    format("You have left the cave.~n",[]).
 
 execute(goforward,[Stench,Breeze,Glitter,Bump,no]) :-
-  decrement_score,
-  goforward(Bump),        % update location and check for bump
-  move_wumpus(goforward), % move wumpus according to the rule set
-  update_agent_health,    % check for wumpus, pit or max actions
-  stench(Stench),         % update rest of percept
-  breeze(Breeze),
-  glitter(Glitter).
+    decrement_score,
+    goforward(Bump),        % update location and check for bump
+    move_wumpus(goforward), % move wumpus according to the rule set
+    update_agent_health,    % check for wumpus, pit or max actions
+    stench(Stench),         % update rest of percept
+    breeze(Breeze),
+    glitter(Glitter).
 
 execute(turnleft,[Stench,Breeze,Glitter,no,no]) :-
-  decrement_score,
-  agent_orientation(Angle),
-  NewAngle is (Angle + 90) mod 360,
-  retract(agent_orientation(Angle)),
-  assert(agent_orientation(NewAngle)),
-  move_wumpus(turnleft),  % move wumpus according to the rule set
-  update_agent_health,    % check for wumpus, pit or max actions
-  stench(Stench),
-  breeze(Breeze),
-  glitter(Glitter).
+    decrement_score,
+    agent_orientation(Angle),
+    NewAngle is (Angle + 90) mod 360,
+    retract(agent_orientation(Angle)),
+    assert(agent_orientation(NewAngle)),
+    move_wumpus(turnleft),  % move wumpus according to the rule set
+    update_agent_health,    % check for wumpus, pit or max actions
+    stench(Stench),
+    breeze(Breeze),
+    glitter(Glitter).
 
 execute(turnright,[Stench,Breeze,Glitter,no,no]) :-
-  decrement_score,
-  agent_orientation(Angle),
-  NewAngle is (Angle + 270) mod 360,
-  retract(agent_orientation(Angle)),
-  assert(agent_orientation(NewAngle)),
-  move_wumpus(turnright), % move wumpus according to the rule set
-  update_agent_health,    % check for wumpus, pit or max actions
-  stench(Stench),
-  breeze(Breeze),
-  glitter(Glitter).
+    decrement_score,
+    agent_orientation(Angle),
+    NewAngle is (Angle + 270) mod 360,
+    retract(agent_orientation(Angle)),
+    assert(agent_orientation(NewAngle)),
+    move_wumpus(turnright), % move wumpus according to the rule set
+    update_agent_health,    % check for wumpus, pit or max actions
+    stench(Stench),
+    breeze(Breeze),
+    glitter(Glitter).
 
 execute(grab,[Stench,Breeze,no,no,no]) :-
-  decrement_score,
-  get_the_gold,
-  move_wumpus(grab),      % move wumpus according to the rule set
-  update_agent_health,    % check for wumpus, pit or max actions
-  stench(Stench),
-  breeze(Breeze).
-
+    decrement_score,
+    get_the_gold,
+    move_wumpus(grab),      % move wumpus according to the rule set
+    update_agent_health,    % check for wumpus, pit or max actions
+    stench(Stench),
+    breeze(Breeze).
+    
 execute(shoot,[Stench,Breeze,Glitter,no,Scream]) :-
-  decrement_score,
-  shoot_arrow(Scream),
-  move_wumpus(shoot),     % move wumpus according to the rule set
-  update_agent_health,    % check for wumpus, pit or max actions
-  stench(Stench),
-  breeze(Breeze),
-  glitter(Glitter).
+    decrement_score,
+    shoot_arrow(Scream),
+    move_wumpus(shoot),     % move wumpus according to the rule set
+    update_agent_health,    % check for wumpus, pit or max actions
+    stench(Stench),
+    breeze(Breeze),
+    glitter(Glitter).
 
 execute(climb,[no,no,no,no,no]) :-
-  agent_location(1,1), !,
-  decrement_score,
-  agent_gold(G),
-  retract(agent_score(S)),
-  S1 is (S + (1000 * G)),
-  assert(agent_score(S1)),
-  retract(agent_in_cave(yes)),
-  assert(agent_in_cave(no)),
-  format("I am outta here.~n",[]).
+    agent_location(1,1), !,
+    decrement_score,
+    agent_gold(G),
+    retract(agent_score(S)),
+    S1 is (S + (1000 * G)),
+    assert(agent_score(S1)),
+    retract(agent_in_cave(yes)),
+    assert(agent_in_cave(no)),
+    format("I am outta here.~n",[]).
 
 execute(climb,[Stench,Breeze,Glitter,no,no]) :-
-  decrement_score,
-  format("You cannot leave the cave from here.~n",[]),
-  move_wumpus(climb),     % move wumpus according to the rule set
-  update_agent_health,    % check for wumpus, pit or max actions
-  stench(Stench),
-  breeze(Breeze),
-  glitter(Glitter).
+    decrement_score,
+    format("You cannot leave the cave from here.~n",[]),
+    move_wumpus(climb),     % move wumpus according to the rule set
+    update_agent_health,    % check for wumpus, pit or max actions
+    stench(Stench),
+    breeze(Breeze),
+    glitter(Glitter).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Perceptions [Stench,Breeze,Glitter,Bump,Scream]
@@ -549,7 +578,7 @@ stench(yes) :-
 
 stench(yes) :-
     agent_location(X,Y),
-    is_adjacent(X, Y, wumpus_location),
+    has_hazard_perception(X, Y, wumpus_location),
     !.
 
 stench(no).
@@ -558,9 +587,9 @@ stench(no).
 %   left, or right of the current agent location.
 
 breeze(yes) :-
-  agent_location(X,Y),
-  is_adjacent(X, Y, pit),
-  !.
+    agent_location(X,Y),
+    has_hazard_perception(X, Y, pit),
+    !.
 
 breeze(no).
 
@@ -568,9 +597,9 @@ breeze(no).
 %   location.
 
 glitter(yes) :-
-  agent_location(X,Y),
-  gold(X,Y),
-  !.
+    agent_location(X,Y),
+    gold(X,Y),
+    !.
 
 glitter(no).
 
@@ -578,12 +607,12 @@ glitter(no).
 %   its current orientation.
 
 goforward(no) :-
-  agent_orientation(Angle),
-  agent_location(X,Y),
-  new_location(X,Y,Angle,X1,Y1),
-  !,
-  retract(agent_location(X,Y)),   % update location
-  assert(agent_location(X1,Y1)).
+    agent_orientation(Angle),
+    agent_location(X,Y),
+    new_location(X,Y,Angle,X1,Y1),
+    !,
+    retract(agent_location(X,Y)),   % update location
+    assert(agent_location(X1,Y1)).
 
 goforward(yes).     % Ran into wall, Bump = yes
 
@@ -592,15 +621,15 @@ goforward(yes).     % Ran into wall, Bump = yes
 %   direction the agent is facing and listen for Scream.
 
 shoot_arrow(Scream) :-
-  agent_arrows(Arrows),
-  Arrows > 0, !,                  % agent has an arrow and will use it!
-  Arrows1 is Arrows - 1,          %   update number of arrows
-  retract(agent_arrows(Arrows)),
-  assert(agent_arrows(Arrows1)),
-  format("You now have ~d arrow(s).~n",Arrows1),
-  agent_location(X,Y),
-  agent_orientation(Angle),
-  propagate_arrow(X,Y,Angle,Scream).
+    agent_arrows(Arrows),
+    Arrows > 0, !,                  % agent has an arrow and will use it!
+    Arrows1 is Arrows - 1,          %   update number of arrows
+    retract(agent_arrows(Arrows)),
+    assert(agent_arrows(Arrows1)),
+    format("You now have ~d arrow(s).~n",Arrows1),
+    agent_location(X,Y),
+    agent_orientation(Angle),
+    propagate_arrow(X,Y,Angle,Scream).
 
 shoot_arrow(no).
 
@@ -609,53 +638,53 @@ shoot_arrow(no).
 % kills agent if in a room with a live wumpus or a pit.
 
 update_agent_health :-
-  agent_location(X,Y),
-  wumpus_health(alive),
-  wumpus_location(X,Y),
-  !,
-  retract(agent_health(alive)),
-  assert(agent_health(dead)),
-  retract(agent_score(S)),
-  S1 is S - 500,
-  assert(agent_score(S1)),
-  format("You are Wumpus food!~n",[]).
+    agent_location(X,Y),
+    wumpus_health(alive),
+    wumpus_location(X,Y),
+    !,
+    retract(agent_health(alive)),
+    assert(agent_health(dead)),
+    retract(agent_score(S)),
+    S1 is S - 500,
+    assert(agent_score(S1)),
+    format("You are Wumpus food!~n",[]).
 
 update_agent_health :-
-  agent_location(X,Y),
-  pit(X,Y),
-  !,
-  retract(agent_health(alive)),
-  assert(agent_health(dead)),
-  retract(agent_score(S)),
-  S1 is S - 500,
-  assert(agent_score(S1)),
-  format("Yyiiiieeee... Fell in pit!~n",[]).
+    agent_location(X,Y),
+    pit(X,Y),
+    !,
+    retract(agent_health(alive)),
+    assert(agent_health(dead)),
+    retract(agent_score(S)),
+    S1 is S - 500,
+    assert(agent_score(S1)),
+    format("Yyiiiieeee... Fell in pit!~n",[]).
 
 update_agent_health :-
-  agent_num_actions(N), % current action
-  max_agent_actions(M), % max allowed actions
-  N >= M,
-  !,
-  retract(agent_health(alive)),
-  assert(agent_health(dead)),
-  retract(agent_score(S)),
-  S1 is S - 500,
-  assert(agent_score(S1)),
-  format("You've starved to death inside this faultfinding cave!~n",[]).
+    agent_num_actions(N), % current action
+    max_agent_actions(M), % max allowed actions
+    N >= M,
+    !,
+    retract(agent_health(alive)),
+    assert(agent_health(dead)),
+    retract(agent_score(S)),
+    S1 is S - 500,
+    assert(agent_score(S1)),
+    format("You've starved to death inside this faultfinding cave!~n",[]).
 
 update_agent_health.
 
 % get_the_gold: adds gold to agents loot if any gold in the square
 
 get_the_gold :-
-  agent_location(X,Y),
-  gold(X,Y), !,                   % there's gold in this square!
-  agent_gold(NGold),              %   add to agents loot
-  NGold1 is NGold + 1,
-  retract(agent_gold(NGold)),
-  assert(agent_gold(NGold1)),
-  format("You now have ~d piece(s) of gold!~n",NGold1),
-  retract(gold(X,Y)).             %   delete gold from square
+    agent_location(X,Y),
+    gold(X,Y), !,                   % there's gold in this square!
+    agent_gold(NGold),              %   add to agents loot
+    NGold1 is NGold + 1,
+    retract(agent_gold(NGold)),
+    assert(agent_gold(NGold1)),
+    format("You now have ~d piece(s) of gold!~n",NGold1),
+    retract(gold(X,Y)).             %   delete gold from square
 
 get_the_gold.
 
@@ -676,14 +705,14 @@ display_world :-
     agent_arrows(N),
     agent_gold(G),
     agent_location(X,Y),
-    format('wumpus_orientation(~d)~n',[WA]),
+    format('wumpus_move_rule(~w)~n~n',[Rule]),
     format('wumpus_health(~w)~n',[WH]),
+    format('wumpus_orientation(~d)~n',[WA]),
     format('wumpus_location(~d,~d)~n',[WLX, WLY]),
-    format('wumpus_last_action(~w)~n',[WAct]),
-    format('wumpus_move_rule(~w)~n',[Rule]),
-    format('agent_location(~d,~d)~n',[X, Y]),
-    format('agent_orientation(~d)~n',[AA]),
+    format('wumpus_last_action(~w)~n~n',[WAct]),
     format('agent_health(~w)~n',[AH]),
+    format('agent_orientation(~d)~n',[AA]),
+    format('agent_location(~d,~d)~n',[X, Y]),
     format('agent_arrows(~d)~n',[N]),
     format('agent_gold(~d)~n',[G]).
 
@@ -695,48 +724,48 @@ display_board :-
 display_board. % doesn't display dodecahedron
 
 display_rows(0,E) :-
-  !,
-  display_dashes(E).
+    !,
+    display_dashes(E).
 
 display_rows(Row,E) :-
-  display_dashes(E),
-  display_row(Row,E),
-  Row1 is Row - 1,
-  display_rows(Row1,E).
+    display_dashes(E),
+    display_row(Row,E),
+    Row1 is Row - 1,
+    display_rows(Row1,E).
 
 display_row(Row,E) :-
-  display_square(1,Row,E).
+    display_square(1,Row,E).
 
 display_square(X,_,E) :-
-  X > E,
-  !,
-  format('|~n',[]).
+    X > E,
+    !,
+    format('|~n',[]).
 
 display_square(X,Y,E) :-
-  format('| ',[]),
-  display_info(X,Y),
-  X1 is X + 1,
-  display_square(X1,Y,E).
+    format('| ',[]),
+    display_info(X,Y),
+    X1 is X + 1,
+    display_square(X1,Y,E).
 
 display_info(X,Y) :-
-  display_location_fact(wumpus_location,X,Y,'W'),
-  display_location_fact(agent_location,X,Y,'A'),
-  display_location_fact(pit,X,Y,'P'),
-  display_location_fact(gold,X,Y,'G').
+    display_location_fact(wumpus_location,X,Y,'W'),
+    display_location_fact(agent_location,X,Y,'A'),
+    display_location_fact(pit,X,Y,'P'),
+    display_location_fact(gold,X,Y,'G').
 
 display_location_fact(Functor,X,Y,Atom) :-
-  Fact =.. [Functor,X,Y],
-  Fact,
-  !,
-  format('~w ',[Atom]).
+    Fact =.. [Functor,X,Y],
+    Fact,
+    !,
+    format('~w ',[Atom]).
 
 display_location_fact(_,_,_,_) :-
-  format('  ',[]).
+    format('  ',[]).
 
 display_dashes(E) :-
-  RowLen is (E * 10) + 1,
-  name('-',[Dash]),
-  format('~*c~n',[RowLen,Dash]).
+    RowLen is (E * 10) + 1,
+    name('-',[Dash]),
+    format('~*c~n',[RowLen,Dash]).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Dynamic facts
@@ -745,9 +774,9 @@ display_dashes(E) :-
 %   ww_initial_state(L).
 
 addto_ww_init_state(Fact) :-
-  retract(ww_initial_state(L)),
-  list_to_set([Fact|L],S), % avoid duplicates
-  assert(ww_initial_state(S)).
+    retract(ww_initial_state(L)),
+    list_to_set([Fact|L],S), % avoid duplicates
+    assert(ww_initial_state(S)).
 
 %assert_once(Fact):-
 %    \+( Fact ), !,
@@ -759,8 +788,8 @@ addto_ww_init_state(Fact) :-
 assert_list([]).
 
 assert_list([Fact|Facts]) :-
-  assert(Fact), % assert_once(Fact),
-  assert_list(Facts).
+    assert(Fact), % assert_once(Fact),
+    assert_list(Facts).
 
 % retract wumpus, gold and pit
 ww_retractall :-
@@ -1030,26 +1059,26 @@ wumpus_select_action(walker, _, sit). % otherwise, don't move
 %   location (1,1).  If goforward succeeds, then check agent's health.
 
 execute_wumpus_action(goforward) :-
-  wumpus_orientation(WAng),
-  wumpus_location(X, Y),
-  new_location(X, Y, WAng, X1, Y1),
-  (X1 > 1 ; Y1 > 1),                % can't go into 1,1
-  !,
-  retract(wumpus_location(X, Y)),   % update location
-  assert(wumpus_location(X1, Y1)).
-  %update_agent_health.
+    wumpus_orientation(WAng),
+    wumpus_location(X, Y),
+    new_location(X, Y, WAng, X1, Y1),
+    (X1 > 1 ; Y1 > 1),                % can't go into 1,1
+    !,
+    retract(wumpus_location(X, Y)),   % update location
+    assert(wumpus_location(X1, Y1)).
+    %update_agent_health.
 
 execute_wumpus_action(goforward).  % unsuccessfully
 
 execute_wumpus_action(turnleft) :-
-  retract(wumpus_orientation(WAng)),
-  WAng1 is (WAng + 90) mod 360,
-  assert(wumpus_orientation(WAng1)).
+    retract(wumpus_orientation(WAng)),
+    WAng1 is (WAng + 90) mod 360,
+    assert(wumpus_orientation(WAng1)).
 
 execute_wumpus_action(turnright) :-
-  retract(wumpus_orientation(WAng)),
-  WAng1 is (WAng + 270) mod 360,
-  assert(wumpus_orientation(WAng1)).
+    retract(wumpus_orientation(WAng)),
+    WAng1 is (WAng + 270) mod 360,
+    assert(wumpus_orientation(WAng1)).
 
 execute_wumpus_action(sit). % do nothing
 
@@ -1075,18 +1104,18 @@ facing_wall_type(_, 1, 270, grid, _).
 facing_wall_type(E, _, 0, grid, E).
 facing_wall_type(_, E, 90, grid, E).
 
-facing_wall_type(X, _, 90, dodeca, _) :-
-    dodeca_map(L),
-    member([X,[0, _, _, _]], L). % To North is a wall
-facing_wall_type(X, _, 270, dodeca, _) :-
-    dodeca_map(L),
-    member([X,[_, 0, _, _]], L). % To South is a wall
 facing_wall_type(X, _, 0, dodeca, _) :-
     dodeca_map(L),
-    member([X,[_, _, 0, _]], L). % To East is a wall
+    member([X,[0, _, _, _]], L). % To East is a wall
+facing_wall_type(X, _, 90, dodeca, _) :-
+    dodeca_map(L),
+    member([X,[_, 0, _, _]], L). % To North is a wall
 facing_wall_type(X, _, 180, dodeca, _) :-
     dodeca_map(L),
-    member([X,[_, _, _, 0]], L). % To West is a wall
+    member([X,[_, _, 0, _]], L). % To West is a wall
+facing_wall_type(X, _, 270, dodeca, _) :-
+    dodeca_map(L),
+    member([X,[_, _, _, 0]], L). % To South is a wall
 
 % facing_home(X,Y,Orient):  True if location (X,Y) is next to (1,1), and
 %   Orient is facing (1,1).
@@ -1128,11 +1157,8 @@ move_towards_type(X1, Y1, Ang1, X2, Y2, Act, T) :-
 % dodeca: adjacent cave
 move_towards_type(X1, _, Ang1, X2, _, Act, dodeca) :-
     dodeca_map(L),
-    %member([X1,[C1, C2, C3, C4]], L),
-    member([X1, Adj], L),
-    %member(X2, Adj),
-    %Adj = [C1, C2, C3, C4],
-    nth0(I, Adj, X2),
+    member([X1, Adj], L), % member([X1, Adj=[C0, C1, C2, C3]], L),
+    nth0(I, Adj, X2), % calculates the index from 0 to 3
     !,
     Ang2 is I * 90,
     direction_action(Ang1, Ang2, Act).
@@ -1196,13 +1222,14 @@ rad2deg(R, D) :-
     Rp is R + 2.0 * pi, 
     rad2deg(Rp, D). 
 
-% is_adjacent/3 : true if square is adjacent of a hazard
+% has_hazard_perception/3 : true if square is adjacent or contains a hazard
 % F is wumpus_location(X,Y) or pit(X,Y).
-is_adjacent(X, Y, F) :-
+% The square test for Stench, Breeze or Rustling
+has_hazard_perception(X, Y, F) :-
     get_setup([_,Type|_]),
-    is_adjacent_type(X, Y, F, Type).
+    has_hazard_type(X, Y, F, Type).
 
-is_adjacent_type(X, Y, F, Type) :-
+has_hazard_type(X, Y, F, Type) :-
     (Type == grid ; Type == fig62),
     X1 is X + 1,
     X0 is X - 1,
@@ -1214,13 +1241,14 @@ is_adjacent_type(X, Y, F, Type) :-
       call(F, X, Y0) ;
       call(F, X, Y) ).
 
-is_adjacent_type(X, _, F, dodeca) :-
+has_hazard_type(X, _, F, dodeca) :-
     dodeca_map(L),
-    member([X,[C1, C2, C3, C4]], L),
-    ( call(F, C1, _) ;
+    member([X, [C0, C1, C2, C3]], L),
+    ( call(F, C0, _) ;
+      call(F, C1, _) ;
       call(F, C2, _) ;
       call(F, C3, _) ;
-      call(F, C4, _) ).
+      call(F, X, _) ).
 
 % success with probability P
 maybe(P) :-
@@ -1233,87 +1261,79 @@ maybe :- maybe(0.5).
 %   one square along Angle and try again.  If arrow hits a wall, then
 %   you missed.
 
-propagate_arrow(X,Y,A,S) :-
-    get_setup([E,Top|_]),
-    propagate_arrow_top(X, Y, A, S, Top, E).
+propagate_arrow(X, Y, A, S) :-
+    get_setup([E, T|_]),
+    propagate_arrow_type(X, Y, A, S, T, E).
 
-propagate_arrow_top(X,Y,_,yes,_,_) :-
-  wumpus_location(X,Y), !,
+propagate_arrow_type(X, Y, _, yes, _, _) :-
+  wumpus_location(X, Y), !,
   kill_wumpus.
 
 % To right / east
-propagate_arrow_top(X,Y,0,Scream,grid,E) :-
-  X1 is X + 1,
-  X1 =< E,
-  !,
-  propagate_arrow_top(X1,Y,0,Scream,grid,E).
+propagate_arrow_type(X, Y, 0, Scream, T, E) :-
+    ( T == grid ; T == fig62 ),
+    X1 is X + 1,
+    X1 =< E,
+    !,
+    propagate_arrow_type(X1, Y, 0, Scream, T, E).
 
 % To up / north
-propagate_arrow_top(X,Y,90,Scream,grid,E) :-
-  Y1 is Y + 1,
-  Y1 =< E,
-  !,
-  propagate_arrow_top(X,Y1,90,Scream,grid,E).
+propagate_arrow_type(X, Y, 90, Scream, T, E) :-
+    ( T == grid ; T == fig62 ),
+    Y1 is Y + 1,
+    Y1 =< E,
+    !,
+    propagate_arrow_type(X, Y1, 90, Scream, T, E).
 
 % To left / west
-propagate_arrow_top(X,Y,180,Scream,grid,_) :-
-  X1 is X - 1,
-  X1 > 0,
-  !,
-  propagate_arrow_top(X1,Y,180,Scream,grid,_).
+propagate_arrow_type(X, Y, 180, Scream, T, _) :-
+    ( T == grid ; T == fig62 ),
+    X1 is X - 1,
+    X1 > 0,
+    !,
+    propagate_arrow_type(X1, Y, 180, Scream, T, _).
 
 % To down / south
-propagate_arrow_top(X,Y,270,Scream,grid,_) :-
-  Y1 is Y - 1,
-  Y1 > 0,
-  !,
-  propagate_arrow_top(X,Y1,270,Scream,grid,_).
+propagate_arrow_type(X, Y, 270, Scream, T, _) :-
+    ( T == grid ; T == fig62 ),
+    Y1 is Y - 1,
+    Y1 > 0,
+    !,
+    propagate_arrow_type(X, Y1, 270, Scream, T, _).
 
 % To right / east
-propagate_arrow_top(X,_,0,Scream,dodeca,_) :-
+propagate_arrow_type(X, _, 0, Scream, dodeca, _) :-
     dodeca_map(L),
-    member([X,[_, _, C3, _]], L),
-    C3 =\= 0, % East valid
-    X1 is C3,
-    all_squares(dodeca, 20, S),
-    member([X1, Y1], S),
+    member([X, [C0, _, _, _]], L),
+    C0 =\= 0, % East valid
     !,
-    propagate_arrow_top(X1,Y1,0,Scream,dodeca,_).
+    propagate_arrow_type(C0, _, 0, Scream, dodeca, _).
 
 % To up / north
-propagate_arrow_top(X,_,90,Scream,dodeca,_) :-
+propagate_arrow_type(X, _, 90, Scream, dodeca, _) :-
     dodeca_map(L),
-    member([X,[C1, _, _, _]], L),
+    member([X, [_, C1, _, _]], L),
     C1 =\= 0, % North valid
-    X1 is C1,
-    all_squares(dodeca, 20, S),
-    member([X1, Y1], S),
     !,
-    propagate_arrow_top(X1,Y1,90,Scream,dodeca,_).
+    propagate_arrow_type(C1, _, 90, Scream, dodeca, _).
 
 % To left / west
-propagate_arrow_top(X,_,180,Scream,dodeca,_) :-
+propagate_arrow_type(X, _, 180, Scream, dodeca, _) :-
     dodeca_map(L),
-    member([X,[_, _, _, C4]], L),
-    C4 =\= 0, % West valid
-    X1 is C4,
-    all_squares(dodeca, 20, S),
-    member([X1, Y1], S),
+    member([X,[_, _, C3, _]], L),
+    C3 =\= 0, % West valid
     !,
-    propagate_arrow_top(X1,Y1,180,Scream,dodeca,_).
+    propagate_arrow_type(C3, _, 180, Scream, dodeca, _).
 
 % To down / south
-propagate_arrow_top(X,_,270,Scream,dodeca,_) :-
+propagate_arrow_type(X, _, 270, Scream, dodeca, _) :-
     dodeca_map(L),
-    member([X,[_, C2, _, _]], L),
-    C2 =\= 0, % South valid
-    X1 is C2,
-    all_squares(dodeca, 20, S),
-    member([X1, Y1], S),
+    member([X,[_, _, _, C4]], L),
+    C4 =\= 0, % South valid
     !,
-    propagate_arrow_top(X1,Y1,270,Scream,dodeca,_).
+    propagate_arrow_type(C4, _, 270, Scream, dodeca, _).
 
-propagate_arrow_top(_,_,_,no,_,_).
+propagate_arrow_type(_, _, _, no, _, _).
 
 % new_location(X,Y,Orientation,X1,Y1): returns new coordinates X1,Y1
 %   after moving from X,Y along Orientation: 0, 90, 180, 270 degrees.
@@ -1343,52 +1363,48 @@ new_location_type(X, Y, 270, X, Y1, Type, _) :-
     Y1 is Y - 1,
     Y1 > 0.
 
-new_location_type(X, _, 0, X1, Y1, dodeca, _) :-
+new_location_type(X, _, 0, C0, Y1, dodeca, _) :-
     dodeca_map(L),
-    member([X,[_, _, C3, _]], L),
-    C3 =\= 0, % East valid
-    X1 is C3,
+    member([X, [C0, _, _, _]], L),
+    C0 =\= 0, % East valid
     all_squares(dodeca, 20, S),
-    member([X1, Y1], S).
+    member([C0, Y1], S).
 
-new_location_type(X, _, 90, X1, Y1, dodeca, _) :-
+new_location_type(X, _, 90, C1, Y1, dodeca, _) :-
     dodeca_map(L),
-    member([X,[C1, _, _, _]], L),
+    member([X, [_, C1, _, _]], L),
     C1 =\= 0, % North valid
-    X1 is C1,
     all_squares(dodeca, 20, S),
-    member([X1, Y1], S).
+    member([C1, Y1], S).
 
-new_location_type(X, _, 180, X1, Y1, dodeca, _) :-
+new_location_type(X, _, 180, C2, Y1, dodeca, _) :-
     dodeca_map(L),
-    member([X,[_, _, _, C4]], L),
-    C4 =\= 0, % West valid
-    X1 is C4,
+    member([X, [_, _, C2, _]], L),
+    C2 =\= 0, % West valid
     all_squares(dodeca, 20, S),
-    member([X1, Y1], S).
+    member([C2, Y1], S).
 
-new_location_type(X, _, 270, X1, Y1, dodeca, _) :-
+new_location_type(X, _, 270, C3, Y1, dodeca, _) :-
     dodeca_map(L),
-    member([X,[_, C2, _, _]], L),
-    C2 =\= 0, % South valid
-    X1 is C2,
+    member([X, [_, _, _, C3]], L),
+    C3 =\= 0, % South valid
     all_squares(dodeca, 20, S),
-    member([X1, Y1], S).
+    member([C3, Y1], S).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % decrement_score: subtracts one from agent_score for each move
 
 decrement_score :-
-  retract(agent_score(S)),
-  S1 is S - 1,
-  assert(agent_score(S1)).
+    retract(agent_score(S)),
+    S1 is S - 1,
+    assert(agent_score(S1)).
 
 % kill_wumpus: pretty obvious
 
 kill_wumpus :-
-  retract(wumpus_health(alive)),
-  assert(wumpus_health(dead)),
-  retract(agent_score(S)),
-  S1 is S + 500, % 500 point for killing the wumpus
-  assert(agent_score(S1)).
+    retract(wumpus_health(alive)),
+    assert(wumpus_health(dead)),
+    retract(agent_score(S)),
+    S1 is S + 500, % 500 point for killing the wumpus
+    assert(agent_score(S1)).
 
