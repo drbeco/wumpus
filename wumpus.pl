@@ -718,12 +718,14 @@ display_world :-
     format('agent_arrows(~d)~n',[N]),
     format('agent_gold(~d)~n',[G]).
 
-display_board :-
+display_board :- % squared board
     get_setup([E,Type|_]),
     (Type == grid ; Type == fig62),
     display_rows(E, E).
 
-display_board. % doesn't display dodecahedron
+display_board :- % dodecahedron board
+    get_setup([_,dodeca|_]),
+    display_dodeca.
 
 display_rows(0, E) :-
     !,
@@ -731,7 +733,7 @@ display_rows(0, E) :-
 
 display_rows(Row, E) :-
     display_dashes(E),
-    display_1row(Row, E),
+    display_1row(Row, E), %display_square(1, Row, E),
     Row1 is Row - 1,
     display_rows(Row1 ,E).
 
@@ -766,11 +768,63 @@ display_location_fact(Functor, X, Y, Atom) :-
 display_location_fact(_, _, _, _) :-
     format(' ',[]).
 
-% display -----------------------
+% display ------ * E + -
 display_dashes(E) :-
     RowLen is (E * 6) + 1,
     name('-', [Dash]),
     format('~*c~n', [RowLen, Dash]).
+
+% display dodeca 3 x 3 context near agent
+display_dodeca :-
+    display_dodeca_rows(3).
+
+display_dodeca_rows(0) :-
+    !,
+    display_dashes(3).
+
+display_dodeca_rows(R) :-
+    display_dashes(3),
+    display_dodeca_1row(R),
+    R1 is R - 1,
+    display_dodeca_rows(R1).
+
+display_dodeca_1row(3) :-
+    dodeca_map(L),
+    agent_location(X, _),
+    member([X, [_, C1, _, _]], L), % North
+    D = [0, C1, 0], % C1 may be zero
+    %all_squares(dodeca, 20, S),
+    %member([C1, Y1], S). % square up -> SU = [C1, Y1]
+    display_dodeca_squares(D).
+
+display_dodeca_1row(2) :-
+    dodeca_map(L),
+    agent_location(X, _),
+    member([X, [C0, _, C2, _]], L), % East + West
+    D = [C2, X, C0], % Ci may be zero
+    display_dodeca_squares(D).
+
+display_dodeca_1row(1) :-
+    dodeca_map(L),
+    agent_location(X, _),
+    member([X, [_, _, _, C3]], L), % South
+    D = [0, C3, 0], % C3 may be zero
+    display_dodeca_squares(D).
+
+display_dodeca_squares([]) :-
+    !,
+    format('|~n',[]).
+
+display_dodeca_squares([0|T]) :-
+    format('|     ', []),
+    display_dodeca_squares(T).
+
+display_dodeca_squares([X|T]) :-
+    format('|', []),
+    all_squares(dodeca, 20, S),
+    member([X, Y], S),
+    display_info(X, Y),
+    display_dodeca_squares(T).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Dynamic facts
