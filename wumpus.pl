@@ -171,9 +171,14 @@ shoot :- manual_execute(shoot).
 climb :- manual_execute(climb).
 
 manual_execute(A) :-
+    agent_num_actions(N), % current action
     execute(A, P),
-    format("~nAction: ~w~nPerception: ~w~n", [A, P]),
+    format("~nAction #~w: ~w~n", [N, A]),
     display_world,
+    format("Perception: ~w~n", [P]),
+    retractall(agent_num_actions(_)),
+    N1 is N + 1,
+    assert(agent_num_actions(N1)),    % new current action number
     agent_score(S),
 	format("Score: ~d~n", S),
     !.
@@ -219,8 +224,8 @@ run_agent_trials(Trials,NextTrial,Score) :-
   init_agent,           % needs to be defined externally
   display_world, % TODO display fixed setup once
   !,
-  retractall(agent_num_actions(_)),
-  assert(agent_num_actions(1)),
+  %retractall(agent_num_actions(_)),
+  %assert(agent_num_actions(1)),
   run_agent_action(Percept),
   agent_score(Score1),
   NextTrial1 is NextTrial + 1,
@@ -248,10 +253,10 @@ run_agent_action(_) :-              % agent allowed only N actions as
 run_agent_action(Percept) :-
   run_agent(Percept,Action),          % needs to be defined externally
   check_agent_action(Action),         % check for goforward, turnright, turnleft, shoot, grab or climb.
-  format("~nExternal run_agent(~w,~w)~n", [Percept, Action]),
+  agent_num_actions(NumActions),             % current action
+  format("~nExternal action #~w: run_agent(~w,~w)~n", [NumActions, Percept, Action]),
   execute(Action,Percept1),
   display_world,
-  agent_num_actions(NumActions),             % current action
   retractall(agent_num_actions(_)),
   NumActions1 is NumActions + 1,
   assert(agent_num_actions(NumActions1)),    % new current action number
@@ -304,6 +309,7 @@ initialize_world :-
     Actions is Size * Size * 4,                      % 4 actions per square average (fig62 is 2.875 moves per square)
     addto_ww_init_state(max_agent_actions(Actions)), % Maximum actions per trial allowed by agent
     addto_ww_init_state(wumpus_move_rule(Move)),     % Wumpus move style
+    %addto_ww_init_state(agent_num_actions(1)),       % First action - moved to initialize agent
     initialize_world(L). %BUG rename initialize_world_type(L)
     %ww_initial_state(L),
     %assert_list(L).
@@ -403,13 +409,15 @@ initialize_agent :-
   retractall(agent_gold(_)),
   retractall(agent_arrows(_)),
   retractall(agent_score(_)),
+  retractall(agent_num_actions(_)),
   assert(agent_orientation(0)),
   assert(agent_in_cave(yes)),
   assert(agent_health(alive)),
   assert(agent_gold(0)),
   assert(agent_arrows(1)), % TODO: setup choose number of arrows
   assert(agent_score(0)),
-  assert(agent_location(1,1)).
+  assert(agent_location(1,1)),
+  assert(agent_num_actions(1)).
   %world_setup([Random, Topology, Size, Move, Actions, Tries, Gold, Pit, Bat]),
   %world_setup([_, Top, _, _, _, _, _, _, _]),
   %initialize_agent(Top).
@@ -596,20 +604,20 @@ execute(turnright,[Stench,Breeze,Glitter,no,no]) :-
 
 execute(grab,[Stench,Breeze,no,no,no]) :-
   decrement_score,
-  stench(Stench),
-  breeze(Breeze),
   get_the_gold,
   move_wumpus(grab), % move wumpus according to the rule set
-  update_agent_health.    % check for wumpus, pit or max actions
+  update_agent_health,    % check for wumpus, pit or max actions
+  stench(Stench),
+  breeze(Breeze).
 
 execute(shoot,[Stench,Breeze,Glitter,no,Scream]) :-
   decrement_score,
-  stench(Stench),
-  breeze(Breeze),
-  glitter(Glitter),
   shoot_arrow(Scream),
   move_wumpus(shoot), % move wumpus according to the rule set
-  update_agent_health.    % check for wumpus, pit or max actions
+  update_agent_health,    % check for wumpus, pit or max actions
+  stench(Stench),
+  breeze(Breeze),
+  glitter(Glitter).
 
 execute(climb,[no,no,no,no,no]) :-
   agent_location(1,1), !,
@@ -624,12 +632,12 @@ execute(climb,[no,no,no,no,no]) :-
 
 execute(climb,[Stench,Breeze,Glitter,no,no]) :-
   decrement_score,
-  stench(Stench),
-  breeze(Breeze),
-  glitter(Glitter),
   format("You cannot leave the cave from here.~n",[]),
   move_wumpus(climb), % move wumpus according to the rule set
-  update_agent_health.    % check for wumpus, pit or max actions
+  update_agent_health,    % check for wumpus, pit or max actions
+  stench(Stench),
+  breeze(Breeze),
+  glitter(Glitter).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
