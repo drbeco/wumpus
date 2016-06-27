@@ -15,7 +15,7 @@
 %    with this program; if not, write to the Free Software Foundation, Inc.,    %
 %    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.                %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Hunt The Wumpus - World Simulator
+% Hunt The Wumpus - World Simulator - Version 5.0, by Dr. Beco
 %
 %   Edited, Compiled, Modified by:
 %   Author:
@@ -36,7 +36,6 @@
 % A Prolog implementation of the Wumpus world described in Russell and
 % Norvig's "Artificial Intelligence: A Modern Approach", Section 6.2.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Version 4.1 by Beco
 %
 % World Setup:
 %
@@ -351,15 +350,15 @@ initialize_agent :-
     assert(agent_location(1,1)),
     assert(agent_num_actions(1)).
 
-gold_squares(E, grid, GS) :-
-    all_squares(grid, E, All),
+gold_squares(E, grid, GS) :- % not used by fig62
+    all_squares_type(grid, E, All),
     delete(All, [1,1], GS).  % all squares but [1,1]
 
 gold_squares(E, dodeca, GS) :-
-    all_squares(dodeca, E, All),
+    all_squares_type(dodeca, E, All),
     delete(All, [1,1], GS).  % all squares but [1,1]
 
-hazard_squares(E, grid, HS) :-
+hazard_squares(E, grid, HS) :- % not used by fig62
     gold_squares(E, grid, GS),
     subtract(GS, [[1,2],[2,1]], HS). % all squares but [1,1],[2,1],[1,2]
 
@@ -401,14 +400,18 @@ dodeca_map([
     [20, [19, 13, 16, 0]]   % Cave 20: east 19,   north 13,   west 16,   south none
     ]).
 
-% all_squares(Extent,AllSqrs): AllSqrs is the list of all possible
+% all_squares(AllSqrs): AllSqrs is the list of all possible
 %   squares [X,Y] in a wumpus world of
 %   grid: size Extent by Extent.
 %   dodeca: 20 rooms, [Room Number, Room Level]
 
-all_squares(dodeca, 20, [[1,1],[2,2],[3,3],[4,3],[5,2],[6,3],[7,3],[8,2],[9,3],[10,3],[11,4],[12,4],[13,5],[14,4],[15,4],[16,5],[17,4],[18,4],[19,5],[20,6]]).
+all_squares(AllSqrs) :-
+    get_setup([E,T|_]), %[Size, Type, Move, Gold, Pit, Bat]),
+    all_squares_type(T, E, AllSqrs).
 
-all_squares(grid, Extent, AllSqrs) :-
+all_squares_type(dodeca, 20, [[1,1],[2,2],[3,3],[4,3],[5,2],[6,3],[7,3],[8,2],[9,3],[10,3],[11,4],[12,4],[13,5],[14,4],[15,4],[16,5],[17,4],[18,4],[19,5],[20,6]]).
+
+all_squares_type(grid, Extent, AllSqrs) :-
     all_squares_1(Extent,1,1,AllSqrs).
 
 all_squares_1(Extent,Extent,Extent,[[Extent,Extent]]).
@@ -483,24 +486,25 @@ place_objects_det(Obj, Qtd, [H|T]) :-
 %   Percept = [Stench,Breeze,Glitter,Bump,Scream,Rustle] 
 %   each having a value of either 'yes' or 'no'.
 
-execute(_,[no,no,no,no,no]) :-
+execute(_,[no,no,no,no,no,no]) :-
     agent_health(dead), !,         % agent must be alive to execute actions
     format("You are dead!~n",[]).
 
-execute(_,[no,no,no,no,no]) :-
+execute(_,[no,no,no,no,no,no]) :-
     agent_in_cave(no), !,         % agent must be in the cave
     format("You have left the cave.~n",[]).
 
-execute(goforward,[Stench,Breeze,Glitter,Bump,no]) :-
+execute(goforward,[Stench,Breeze,Glitter,Bump,no,Rustle]) :-
     decrement_score,
     goforward(Bump),        % update location and check for bump
-    move_wumpus(goforward), % move wumpus according to the rule set
+    move_wumpus(goforward), % move wumpus according to the rule set, before bats grab him
+    elsewhereville(Rustle), % check for bats nearby or in the current square
     update_agent_health,    % check for wumpus, pit or max actions
     stench(Stench),         % update rest of percept
     breeze(Breeze),
     glitter(Glitter).
 
-execute(turnleft,[Stench,Breeze,Glitter,no,no]) :-
+execute(turnleft,[Stench,Breeze,Glitter,no,no,Rustle]) :-
     decrement_score,
     agent_orientation(Angle),
     NewAngle is (Angle + 90) mod 360,
@@ -510,9 +514,10 @@ execute(turnleft,[Stench,Breeze,Glitter,no,no]) :-
     update_agent_health,    % check for wumpus, pit or max actions
     stench(Stench),
     breeze(Breeze),
-    glitter(Glitter).
+    glitter(Glitter),
+    rustle(Rustle).
 
-execute(turnright,[Stench,Breeze,Glitter,no,no]) :-
+execute(turnright,[Stench,Breeze,Glitter,no,no,Rustle]) :-
     decrement_score,
     agent_orientation(Angle),
     NewAngle is (Angle + 270) mod 360,
@@ -522,26 +527,29 @@ execute(turnright,[Stench,Breeze,Glitter,no,no]) :-
     update_agent_health,    % check for wumpus, pit or max actions
     stench(Stench),
     breeze(Breeze),
-    glitter(Glitter).
+    glitter(Glitter),
+    rustle(Rustle).
 
-execute(grab,[Stench,Breeze,no,no,no]) :-
+execute(grab,[Stench,Breeze,no,no,no,Rustle]) :-
     decrement_score,
     get_the_gold,
     move_wumpus(grab),      % move wumpus according to the rule set
     update_agent_health,    % check for wumpus, pit or max actions
     stench(Stench),
-    breeze(Breeze).
+    breeze(Breeze),
+    rustle(Rustle).
 
-execute(shoot,[Stench,Breeze,Glitter,no,Scream]) :-
+execute(shoot,[Stench,Breeze,Glitter,no,Scream,Rustle]) :-
     decrement_score,
     shoot_arrow(Scream),
     move_wumpus(shoot),     % move wumpus according to the rule set
     update_agent_health,    % check for wumpus, pit or max actions
     stench(Stench),
     breeze(Breeze),
-    glitter(Glitter).
+    glitter(Glitter),
+    rustle(Rustle).
 
-execute(climb,[no,no,no,no,no]) :-
+execute(climb,[no,no,no,no,no,no]) :-
     agent_location(1,1), !,
     decrement_score,
     agent_gold(G),
@@ -552,22 +560,24 @@ execute(climb,[no,no,no,no,no]) :-
     assert(agent_in_cave(no)),
     format("I am outta here.~n",[]).
 
-execute(climb,[Stench,Breeze,Glitter,no,no]) :-
+execute(climb,[Stench,Breeze,Glitter,no,no,Rustle]) :-
     decrement_score,
     format("You cannot leave the cave from here.~n",[]),
     move_wumpus(climb),     % move wumpus according to the rule set
     update_agent_health,    % check for wumpus, pit or max actions
     stench(Stench),
     breeze(Breeze),
-    glitter(Glitter).
+    glitter(Glitter),
+    rustle(Rustle).
 
-execute(sit,[Stench,Breeze,Glitter,no,no]) :-
+execute(sit,[Stench,Breeze,Glitter,no,no,Rustle]) :-
     decrement_score,
     move_wumpus(sit),       % move wumpus according to the rule set
     update_agent_health,    % check for wumpus, pit or max actions
     stench(Stench),
     breeze(Breeze),
-    glitter(Glitter).
+    glitter(Glitter),
+    rustle(Rustle).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Perceptions [Stench,Breeze,Glitter,Bump,Scream]
@@ -608,13 +618,46 @@ glitter(no).
 goforward(no) :-
     agent_orientation(Angle),
     agent_location(X,Y),
-    new_location(X,Y,Angle,X1,Y1),
+    new_location(X,Y,Angle,X1,Y1),  % fail if bump
     !,
     retract(agent_location(X,Y)),   % update location
-    assert(agent_location(X1,Y1)).
+    assert(agent_location(X1,Y1)).  % if it has bats, it will update again
 
 goforward(yes).     % Ran into wall, Bump = yes
+    %    format("Not possible! Bumped a wall!", []).
 
+% rustle(Rustle): Rustle = yes if bats are nearby (adjacent)
+% Rustle = no if no bats or 
+% agent is in the bat's square (for a period short of time of course)
+
+rustle(yes) :-
+    agent_location(X, Y),
+    %\+ bat(X, Y),
+    has_hazard_perception(X, Y, bat),
+    !.
+
+rustle(no).
+
+% check for bats nearby or in the current square
+
+%elsewhereville(yes) :-
+%    rustle(yes), % just adjacent, not in the current square
+%    !.
+
+elsewhereville(Rustle) :-
+    agent_location(X, Y),
+    bat(X, Y),
+    !,
+    all_squares(All),
+    delete(All, [X, Y], BatList),  % all squares but the current one
+    random_member([BX, BY], BatList),
+    retractall(agent_location(_,_)),
+    assert(agent_location(BX, BY)),
+    rustle(Rustle),
+    format("Zap! Super bat snatch! Elsewhereville for you!~n", []).
+
+elsewhereville(Rustle) :- % no rustle, no bat move
+    rustle(Rustle).
 
 % shoot_arrow(Scream): If agent has an arrow, then shoot it in the
 %   direction the agent is facing and listen for Scream.
@@ -647,6 +690,7 @@ update_agent_health :-
     S1 is S - 500,
     assert(agent_score(S1)),
     format("You are Wumpus food!~n",[]).
+%format("... Oops! You are Wumpus food!~n",[]).
 
 update_agent_health :-
     agent_location(X,Y),
@@ -813,7 +857,7 @@ display_dodeca_squares([0|T]) :-
 
 display_dodeca_squares([X|T]) :-
     format('|', []),
-    all_squares(dodeca, 20, S),
+    all_squares_type(dodeca, 20, S),
     member([X, Y], S),
     display_info(X, Y),
     display_dodeca_squares(T).
@@ -953,7 +997,7 @@ check_setup_gold(G0, _, G0) :-
 
 check_setup_gold(G0, S1, G0) :-
     integer(G0),
-    G0>=0, % at least one gold (BUG G0>0)
+    G0>0, % at least one gold 
     MX is S1 * S1 - 1,
     G0=<MX.
 
@@ -1493,28 +1537,28 @@ new_location_type(X, _, 0, C0, Y1, dodeca, _) :-
     dodeca_map(L),
     member([X, [C0, _, _, _]], L),
     C0 =\= 0, % East valid
-    all_squares(dodeca, 20, S),
+    all_squares_type(dodeca, 20, S),
     member([C0, Y1], S).
 
 new_location_type(X, _, 90, C1, Y1, dodeca, _) :-
     dodeca_map(L),
     member([X, [_, C1, _, _]], L),
     C1 =\= 0, % North valid
-    all_squares(dodeca, 20, S),
+    all_squares_type(dodeca, 20, S),
     member([C1, Y1], S).
 
 new_location_type(X, _, 180, C2, Y1, dodeca, _) :-
     dodeca_map(L),
     member([X, [_, _, C2, _]], L),
     C2 =\= 0, % West valid
-    all_squares(dodeca, 20, S),
+    all_squares_type(dodeca, 20, S),
     member([C2, Y1], S).
 
 new_location_type(X, _, 270, C3, Y1, dodeca, _) :-
     dodeca_map(L),
     member([X, [_, _, _, C3]], L),
     C3 =\= 0, % South valid
-    all_squares(dodeca, 20, S),
+    all_squares_type(dodeca, 20, S),
     member([C3, Y1], S).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
