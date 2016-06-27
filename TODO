@@ -7,6 +7,12 @@
     - pinprick pains: foot pang when stepping in an arrow
     - hear rustling (flaps) from bat nearby: HEAR FLAPS
 
+* nearest_orientation : 
+    - random when tied? (avoid [1,1] corner)
+    - near is the Angle I'm looking at already
+
+* wumpus original messages
+
 --- 
 
 2015-12-01:
