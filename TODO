@@ -1,24 +1,20 @@
  TODO:
 
----
+2016-06-26
 
-2016-06-26:
-
-* Display squares in dodecahedron
-* BUG: dodeca wumpus not to move to max/min, but check what it wants
-* Move this TODO to issues
-* Wumpus movement: stalker (follow the Agent)
-* Check walker: wumpus leave cave with agent?
-
+* New perceptions
+    - cave light to find where to climb
+    - pinprick pains: foot pang when stepping in an arrow
+    - hear rustling (flaps) from bat nearby: HEAR FLAPS
 
 --- 
 
 2015-12-01:
 
 * Size 0 = random
-* debug() = setup a forced position
+* debug() = setup a forced position, repeat random seed
 * advanced_setup = setup agent start as random or [1,1], number of arrows
-* Agent always climb on [1,1] (?). To find it:
+* Agent always climb on [1,1]. To find it:
         - grid: guindance by bumps, find left+bottom corner
         - dodecahedron: need to check the level
         - OR: BETTER! Climb cave always have GLITTER (?)
@@ -26,10 +22,7 @@
 * Agent can find arrows by GLITTER
 * agent start at random cave
 * hazard: bats. Move you to a random location
-* New perception: HEAR FLAPS
-* wumpus movement (stander, walker, runner)
 * arrow can hit you back
-* -500 points if could not climb out in time (starvation)
 * restart :- agent has 3 lifes in the same world
 * measure time (benchmark)
 
@@ -57,6 +50,22 @@ DONE:
 
 - Enough with the grids! Lets see the original topology:
 
+* wumpus movement (stander, walker, runner)
+* -500 points if could not climb out in time (starvation)
+
+
+* Check walker: wumpus leave cave with agent?
+* Wumpus movement: stalker (follow the Agent)
+
+2016-06-26:
+
+* Display squares in dodecahedron
+* BUG: dodeca wumpus not to move to max/min, but check what it wants
+* Move this TODO to issues
+
+---
+
+# Dodecahedron map:
 
            +----+                         +----+
   +--------+ 4,3+-------------------------+ 3,3+-------+
