@@ -276,29 +276,17 @@ run_agent_action(Percept) :-
     format("External function run_agent(~w, Nop) failed miserably!~n", [Percept]),
     !, fail.
 
-% initialize(World,Percept): initializes the Wumpus world and our fearless
-%   agent according to the given World and returns the Percept from
-%   square 1,1.
-%   World can be:
-%   fig62: for Figure 6.2 of Russell and Norvig,
-%   grid: a grid sized 2x2 to 9x9
-%   dodeca: a random world based on the original dodecahedron
+% initialize(Percept): initializes the Wumpus world and our fearless
+%   agent and returns the Percept from square 1,1.
+%   Percept = [Stench,Breeze,Glitter,Bump,Scream,Rustle] 
 
-initialize([Stench,no,no,no,no]) :-
+initialize([Stench,no,no,no,no,no]) :-
     initialize_world,
     initialize_agent,
     stench(Stench).
-    % breeze(Breeze), % no pit on [1,1], [1,2] and [2,1]
-    % glitter(Glitter). % not on [1,1]
-
-% restart: restarts the current world from scratch.  For now, since we only
-% have one world fig62, restart just reinitializes this world.
-% TODO: maybe to be used with lifes.
-%
-%restart([Stench,no,no,no,no]) :-
-%   initialize_world,
-%   initialize_agent,
-%   stench(Stench).
+    % breeze(Breeze),   % no pit on [1,1] and grid: [1,2],[2,1] or dodeca: [2,2],[5,2],[8,2]
+    % rustle(Rustle),   % no bat on [1,1], and idem above] 
+    % glitter(Glitter). % no gold on [1,1]
 
 % initialize_world: gather information
 initialize_world :-
@@ -377,7 +365,7 @@ hazard_squares(E, grid, HS) :-
 
 hazard_squares(E, dodeca, HS) :-
     gold_squares(E, dodeca, GS), % all squares but [1,1]
-    subtract(GS, [[2,2],[5,2],[6,2]], HS). % all squares but [2,2],[5,2],[6,2]
+    subtract(GS, [[2,2],[5,2],[8,2]], HS). % all squares but [2,2],[5,2],[8,2]
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -481,18 +469,19 @@ place_objects_det(Obj, Qtd, [H|T]) :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % execute(Action,Percept): executes Action and returns Percept
 %
-%   Action is one of:
-%     goforward: move one square along current orientation if possible
-%     turnleft:  turn left 90 degrees
-%     turnright: turn right 90 degrees
-%     grab:      pickup gold if in square
-%     shoot:     shoot an arrow along orientation, killing wumpus if
-%                in that direction
-%     climb:     if in square 1,1, leaves the cave and adds 1000 points
-%                for each piece of gold
+%  Action is one of:
+%   1. goforward: move one square along current orientation if possible
+%   2. turnleft:  turn left +90 degrees
+%   3. turnright: turn right -90 degrees
+%   4. grab:      pickup gold if in square
+%   5. shoot:     shoot an arrow along orientation, killing wumpus if
+%                 in that direction
+%   6. climb:     if in square 1,1, leaves the cave and adds 1000 points
+%                 for each piece of gold
+%   7. sit:       do nothing, costs one action and -1 score
 %
-%   Percept = [Stench,Breeze,Glitter,Bump,Scream] each having
-%     a value of either 'yes' or 'no'.
+%   Percept = [Stench,Breeze,Glitter,Bump,Scream,Rustle] 
+%   each having a value of either 'yes' or 'no'.
 
 execute(_,[no,no,no,no,no]) :-
     agent_health(dead), !,         % agent must be alive to execute actions
