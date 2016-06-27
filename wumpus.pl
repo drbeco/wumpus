@@ -649,10 +649,12 @@ elsewhereville(Rustle) :-
     bat(X, Y),
     !,
     all_squares(All),
-    delete(All, [X, Y], BatList),  % all squares but the current one
-    random_member([BX, BY], BatList),
+    delete(All, [X, Y], All1),  % all squares but the current one
+    findall([BX,BY], bat(BX, BY), AllBats), % find all bats
+    subtract(All1, AllBats, BatList), % remove all bats from possible new square
+    random_member([AX, AY], BatList), % chose a new square [AX, AY]
     retractall(agent_location(_,_)),
-    assert(agent_location(BX, BY)),
+    assert(agent_location(AX, AY)),
     rustle(Rustle),
     format("Zap! Super bat snatch! Elsewhereville for you!~n", []).
 
