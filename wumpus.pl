@@ -541,8 +541,8 @@ execute(grab,[Stench,Breeze,no,no,no,Rustle]) :-
 
 execute(shoot,[Stench,Breeze,Glitter,no,Scream,Rustle]) :-
     decrement_score,
-    shoot_arrow(Scream),
     move_wumpus(shoot),     % move wumpus according to the rule set
+    shoot_arrow(Scream),    % shoot after wumpus move, as it may dodge the arrow
     update_agent_health,    % check for wumpus, pit or max actions
     stench(Stench),
     breeze(Breeze),
@@ -1131,7 +1131,8 @@ wumpus_select_action(spelunker, _, WAct) :- % move towards a pit
 % walker : (original) moves when it hears a shoot, or you enter its cave
 
 wumpus_select_action(walker, shoot, WAct) :- % move if hear a shoot
-    !,
+    agent_arrows(Arrows),
+    Arrows > 0, !,                  % agent has an arrow and will use it!
     random_member(WAct, [turnleft, turnright, goforward, goforward]).
 
 wumpus_select_action(walker, _, WAct) :- % or if the agent comes in
