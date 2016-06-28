@@ -37,9 +37,19 @@
 % Norvig's "Artificial Intelligence: A Modern Approach", Section 6.2.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
+% Agent actions:
+% 
+% 1. goforward,    % moves the agent forward
+% 2. turnright,    % turns to right / clockwise
+% 3. turnleft,     % turns to left / anti-clockwise
+% 4. grab,         % grabs something (gold, arrow, ...)
+% 5. shoot,        % shoots an arrow
+% 6. sit,          % sit and do nothing
+% 7. climb,        % climbs out the cave from square [1,1]
+%
 % World Setup:
 %
-% world_setup([S, T, M, G, P, B]).
+% world_setup([Size, Type, Move, Gold, Pit, Bat]).
 % 1. Size: 2..20, with some constrictions: [2-9] grid; 20, dodeca; 4, fig62
 % 2. Type: fig62, grid or dodeca
 % 3. Move: walker, runner, wanderer, spinner, hoarder, spelunker, stander, trapper and bulldozer
@@ -131,19 +141,19 @@
     gold/2,                 % ww Gold positions
     pit/2,                  % ww Pit positions
     bat/2,                  % ww Bat positions
-    agent_location/2,       % ww (X,Y) on grid; (CaveNumber, Level) on dodeca;
-    agent_orientation/1,    % ww Agent orientation: 0/East/Right, 90/North/Up, 180/West/Left, 270/South/Down
-    agent_in_cave/1,        % ww Agent is inside cave: yes/no
-    agent_health/1,         % ww Agent health: alive/dead
-    agent_gold/1,           % ww Number of golds that the agent has (start with 0)
-    agent_arrows/1,         % ww Number of arrows that the agent has (start with 1)
-    agent_score/1,          % ww Game Score
-    agent_num_actions/1,    % ww Number of the current agent action
     gold_probability/1,     % ww Probability that a location has gold (default 0.10)
     pit_probability/1,      % ww Probability that a non-(1,1) location has a pit (default 0.20)
     bat_probability/1,      % ww Probability that a non-(1,1) location has a bat (default 0.10)
     max_agent_lifes/1,      % ww Maximum agent tries (climb or die) per world (default 1)
-    max_agent_actions/1,    % ww Maximum actions per trial allowed by agent (default 64)
+    max_agent_actions/1,    % ww Maximum actions per trial allowed by agent (default 4*squardes)
+    agent_location/2,       % Agent location: (X,Y) on grid; (CaveNumber, Level) on dodeca;
+    agent_orientation/1,    % Agent orientation: 0/East/Right, 90/North/Up, 180/West/Left, 270/South/Down
+    agent_in_cave/1,        % Agent is inside cave: yes/no
+    agent_health/1,         % Agent health: alive/dead
+    agent_gold/1,           % Number of golds that the agent has (start with 0)
+    agent_arrows/1,         % Number of arrows that the agent has (start with 1)
+    agent_score/1,          % Agent Game Score
+    agent_num_actions/1,    % Number of the current agent action
     ww_initial_state/1      % list of ww configuration values
   ]).
 
@@ -289,23 +299,23 @@ initialize([Stench,no,no,no,no,no]) :-
 
 % initialize_world: gather information
 initialize_world :-
-    ww_retractall, %retract wumpus, gold, pit and bat
-    assert_setup, % assert user or default setup
-    get_setup(L), %[Size, Type, Move, Gold, Pit, Bat]),
+    ww_retract_all, % retract ww list (wumpus, gold, pit and bat, and all initial state variables)
+    assert_setup,  % assert user or default setup
+    get_setup(L),  % [Size, Type, Move, Gold, Pit, Bat]),
     L=[Size, _, Move, Gold, Pit, Bat],
-    addto_ww_init_state(world_extent(Size)),
+    ww_addto_init_state(world_extent(Size)),
     random(0, 4, WAngN),
     WAng is WAngN * 90,
-    addto_ww_init_state(wumpus_orientation(WAng)),   % Random Wumpus start angle
-    addto_ww_init_state(wumpus_health(alive)),
-    addto_ww_init_state(wumpus_last_action(sit)),
-    addto_ww_init_state(gold_probability(Gold)),     % Probability that a location has gold
-    addto_ww_init_state(pit_probability(Pit)),       % Probability that a non-(1,1) location has a pit
-    addto_ww_init_state(bat_probability(Bat)),       % Probability that a location has bats
-    addto_ww_init_state(max_agent_lifes(1)),         % Maximum agent lifes (climb or die) per world
+    ww_addto_init_state(wumpus_orientation(WAng)),   % Random Wumpus start angle
+    ww_addto_init_state(wumpus_health(alive)),
+    ww_addto_init_state(wumpus_last_action(sit)),
+    ww_addto_init_state(gold_probability(Gold)),     % Probability that a location has gold
+    ww_addto_init_state(pit_probability(Pit)),       % Probability that a non-(1,1) location has a pit
+    ww_addto_init_state(bat_probability(Bat)),       % Probability that a location has bats
+    ww_addto_init_state(max_agent_lifes(1)),         % Maximum agent lifes (climb or die) per world
     Actions is Size * Size * 4,                      % 4 actions per square average (fig62 is 2.875 moves per square)
-    addto_ww_init_state(max_agent_actions(Actions)), % Maximum actions per trial allowed by agent
-    addto_ww_init_state(wumpus_move_rule(Move)),     % Wumpus move style
+    ww_addto_init_state(max_agent_actions(Actions)), % Maximum actions per trial allowed by agent
+    ww_addto_init_state(wumpus_move_rule(Move)),     % Wumpus move style
     initialize_world_type(L).
 
 % initialize_world_type(World): Initializes the Wumpus world
@@ -313,23 +323,25 @@ initialize_world :-
 %
 % initialize_world_type(World): Initializes the Wumpus world in Figure 6.2 of Russell & Norvig
 initialize_world_type([_,fig62,_,_,_,_]) :-
-    addto_ww_init_state(wumpus_location(1,3)), % wumpus location
-    addto_ww_init_state(gold(2,3)), % gold position
-    addto_ww_init_state(pit(3,1)),  % pit 1
-    addto_ww_init_state(pit(3,3)),  % pit 2
-    addto_ww_init_state(pit(4,4)),  % pit 3
-    ww_initial_state(L),
-    assert_list(L).
+    ww_addto_init_state(wumpus_location(1,3)), % wumpus location
+    ww_addto_init_state(gold(2,3)), % gold position
+    ww_addto_init_state(pit(3,1)),  % pit 1
+    ww_addto_init_state(pit(3,3)),  % pit 2
+    ww_addto_init_state(pit(4,4)),  % pit 3
+    ww_assert_all.
+    %ww_initial_state(L),
+    %assert_list(L).
 
 initialize_world_type([E, Type, _, PG, PP, PB]) :-
     gold_squares(E, Type, GS),
     hazard_squares(E, Type, HS),
-    place_it(gold, PG, GS),           % place gold (not [1,1])
-    place_it(pit, PP, HS),            % AllSqrs3
-    place_it(bat, PB, HS),            % place some bats not near the entrance
-    place_it(wumpus_location, 1, GS), % exactly one wumpus, initialize it not in [1,1]
-    ww_initial_state(L),
-    assert_list(L).
+    ww_place_it(gold, PG, GS),           % place gold (not [1,1])
+    ww_place_it(pit, PP, HS),            % AllSqrs3
+    ww_place_it(bat, PB, HS),            % place some bats not near the entrance
+    ww_place_it(wumpus_location, 1, GS), % exactly one wumpus, initialize it not in [1,1]
+    ww_assert_all.
+    %ww_initial_state(L),
+    %assert_list(L).
 
 % initialize_agent: agent is initially alive, destitute (except for one
 %   arrow), in grid 1,1 and facing to the right (0 degrees).
@@ -431,45 +443,45 @@ all_squares_1(Extent,Row,Col,[[Row,Col]|RestSqrs]) :-
 % place_objects(Object,P,Squares): For each square in Squares, place
 %   Object at square with probability P.
 
-place_it(_, _, []).
+ww_place_it(_, _, []).
 
-place_it(gold, Qt, Sq) :-
+ww_place_it(gold, Qt, Sq) :-
     float(Qt),
-    place_objects_det(gold, 1, Sq),   % put one for sure
-    place_objects_prob(gold, Qt, Sq). % and lets see how many others
+    ww_place_objects_det(gold, 1, Sq),   % put one for sure
+    ww_place_objects_prob(gold, Qt, Sq). % and lets see how many others
 
-place_it(Ob, Qt, Sq) :-
+ww_place_it(Ob, Qt, Sq) :-
     float(Qt),
-    place_objects_prob(Ob, Qt, Sq).
+    ww_place_objects_prob(Ob, Qt, Sq).
 
-place_it(Ob, Qt, Sq) :-
+ww_place_it(Ob, Qt, Sq) :-
     integer(Qt),
-    place_objects_det(Ob, Qt, Sq).
+    ww_place_objects_det(Ob, Qt, Sq).
 
-place_objects_prob(_, _, []).
+ww_place_objects_prob(_, _, []).
 
-place_objects_prob(Object, P, [Sq|Squares]) :-
+ww_place_objects_prob(Object, P, [Sq|Squares]) :-
     maybe(P),   % succeeds with probability P
     !,
     Fact =.. [Object|Sq], % Fact = pit(X,Y)
-    addto_ww_init_state(Fact),
-    place_objects_prob(Object, P, Squares).
+    ww_addto_init_state(Fact),
+    ww_place_objects_prob(Object, P, Squares).
 
-place_objects_prob(Object, P, [_|Squares]) :-
-    place_objects_prob(Object, P, Squares).
+ww_place_objects_prob(Object, P, [_|Squares]) :-
+    ww_place_objects_prob(Object, P, Squares).
 
-place_objects_det(_, _, []).
+ww_place_objects_det(_, _, []).
 
-place_objects_det(_, 0, [_|_]).
+ww_place_objects_det(_, 0, [_|_]).
 
-place_objects_det(Obj, Qtd, [H|T]) :-
+ww_place_objects_det(Obj, Qtd, [H|T]) :-
     Qtd>0,
     random_member(Sq, [H|T]),
     delete([H|T], Sq, S1),
     Fact =.. [Obj | Sq], % Fact = pit(X,Y)
-    addto_ww_init_state(Fact),
+    ww_addto_init_state(Fact),
     Q1 is Qtd - 1,
-    place_objects_det(Obj, Q1, S1).
+    ww_place_objects_det(Obj, Q1, S1).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % execute(Action,Percept): executes Action and returns Percept
@@ -869,39 +881,48 @@ display_dodeca_squares([X|T]) :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Dynamic facts
 
-% addto_ww_init_state(Fact): Adds Fact to the list L stored in
+% ww_addto_init_state(Fact): Adds Fact to the list L stored in
 %   ww_initial_state(L).
 
-addto_ww_init_state(Fact) :-
-    retract(ww_initial_state(L)),
+ww_addto_init_state(Fact) :-
+    (ww_initial_state(L) ; L = []), !,
+    retractall(ww_initial_state(_)),
     list_to_set([Fact|L],S), % avoid duplicates
     assert(ww_initial_state(S)).
 
-% assert_list(L): Assert all facts on list L.
-assert_list([]).
+% ww_assert_all :- assert all facts on ww list
 
-assert_list([Fact|Facts]) :-
+ww_assert_all :-
+    (ww_initial_state(L) ; L = []), !,
+    ww_retract_all,
+    ww_assert_list(L),
+    assert(ww_initial_state(L)).
+
+% assert_list(L): Assert all facts on list L.
+ww_assert_list([]).
+
+ww_assert_list([Fact|Facts]) :-
     assert(Fact), % assert_once(Fact),
-    assert_list(Facts).
+    ww_assert_list(Facts).
 
 % retract wumpus, gold, pit and bat
-ww_retractall :-
-    retractall(world_extent(_)),
-    retractall(wumpus_orientation(_)),
-    retractall(wumpus_health(_)),
-    retractall(wumpus_last_action(_)),
-    retractall(wumpus_location(_,_)),
-    retractall(wumpus_move_rule(_)),
-    retractall(gold(_,_)),
-    retractall(pit(_,_)),
-    retractall(bat(_,_)),
-    retractall(pit_probability(_)),
-    retractall(bat_probability(_)),
-    retractall(gold_probability(_)),
-    retractall(max_agent_lifes(_)),
-    retractall(max_agent_actions(_)),
+ww_retract_all :-
+    (ww_initial_state(L) ; L = []), !,
     retractall(ww_initial_state(_)),
-    assert(ww_initial_state([])).
+    maplist(ww_par, L, Pl), % Pl = [[gold, 2], [pit, 2], ...]
+    list_to_set(Pl, S),
+    ww_retract_list(S).
+
+ww_retract_list([]).
+
+ww_retract_list([[N, A]|Fs]) :-
+    functor(U, N, A),    % functor(U, gold, 2), U=gold(_,_)
+    retractall(U),       % retract all facts in the list 
+    ww_retract_list(Fs).
+
+ww_par(F, P) :- % F=gold(1,3), P=[gold, 2]
+    functor(F, N, A),
+    P = [N, A].
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % check for goforward, turnright, turnleft, shoot, grab or climb.
