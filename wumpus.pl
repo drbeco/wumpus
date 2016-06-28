@@ -294,7 +294,9 @@ initialize_world :-
     get_setup(L), %[Size, Type, Move, Gold, Pit, Bat]),
     L=[Size, _, Move, Gold, Pit, Bat],
     addto_ww_init_state(world_extent(Size)),
-    addto_ww_init_state(wumpus_orientation(0)),
+    random(0, 4, WAngN),
+    WAng is WAngN * 90,
+    addto_ww_init_state(wumpus_orientation(WAng)),   % Random Wumpus start angle
     addto_ww_init_state(wumpus_health(alive)),
     addto_ww_init_state(wumpus_last_action(sit)),
     addto_ww_init_state(gold_probability(Gold)),     % Probability that a location has gold
