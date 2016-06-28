@@ -38,7 +38,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 % Agent actions:
-% 
+%
 % 1. goforward,    % moves the agent forward
 % 2. turnright,    % turns to right / clockwise
 % 3. turnleft,     % turns to left / anti-clockwise
@@ -90,7 +90,7 @@
 %       bulldozer : hunt the agent as soon as it smells him
 %
 %      Actions:     - 4 per square
-%      Tries:       - Number of trials (TODO, now fixed 1)
+%      Tries:       - Number of trials
 %
 %      Gold:        - Gold probability per square. When fig62 or pit3, only one gold. (default 0.1)
 %      Hazard: Pit: - Pit probability per square. When fig62 or pit3, only 3 pits. (default 0.2)
@@ -176,6 +176,7 @@ manual_init :-
     display_world,
     !.
 
+% Manual actions to play directly at the swipl PROLOG prompt
 go :- goforward.
 goforward :- manual_execute(goforward).
 turn :- turnright.
@@ -202,7 +203,7 @@ manual_execute(A) :-
     format("Perception: ~w~n", [P]),
     retractall(agent_num_actions(_)),
     N1 is N + 1,
-    assert(agent_num_actions(N1)),    % new current action number
+    assert(agent_num_actions(N1)),
     agent_score(S),
 	format("Score: ~d~n", S),
     !.
@@ -243,7 +244,7 @@ run_agent_trials(Trials,NextTrial,Score) :-
     initialize(Percept),  % world and agent
     format("External init_agent...~n"),
     init_agent,           % needs to be defined externally
-    display_world, % TODO display fixed setup once
+    display_world,
     !,
     run_agent_action(Percept),
     agent_score(Score1),
@@ -257,27 +258,27 @@ run_agent_trials(Trials,NextTrial,Score) :-
 %   defined by max_agent_actions(M).  In any case, the total time
 %   spent during calls to run_agent is returned in Time (millisecs).
 
-run_agent_action(_) :-              % trial over when agent dies or
-    ( agent_health(dead) ;            %   leaves cave
-      agent_in_cave(no) ),
+run_agent_action(_) :-
+    ( agent_health(dead) ;          % trial over when agent dies or
+      agent_in_cave(no) ),          %   leaves cave
     !.
 
 run_agent_action(_) :-               % agent allowed only N actions as
-    agent_num_actions(NumActions),   % current action
     max_agent_actions(N),            %   defined by max_agent_actions(N)
+    agent_num_actions(NumActions),   % current action
     NumActions > N,
     !.
 
 run_agent_action(Percept) :-
     run_agent(Percept,Action),          % needs to be defined externally
-    check_agent_action(Action),         % check for goforward, turnright, turnleft, shoot, grab or climb.
+    check_agent_action(Action),         % check for goforward, turnright, turnleft, shoot, grab, sit or climb.
     agent_num_actions(NumActions),      % current action
     format("~nExternal action #~w: run_agent(~w,~w)~n", [NumActions, Percept, Action]),
     execute(Action,Percept1),
     display_world,
     retractall(agent_num_actions(_)),
     NumActions1 is NumActions + 1,
-    assert(agent_num_actions(NumActions1)),    % new current action number
+    assert(agent_num_actions(NumActions1)),
     !,
     run_agent_action(Percept1).
 
@@ -287,28 +288,30 @@ run_agent_action(Percept) :-
 
 % initialize(Percept): initializes the Wumpus world and our fearless
 %   agent and returns the Percept from square 1,1.
-%   Percept = [Stench,Breeze,Glitter,Bump,Scream,Rustle] 
+%   Percept = [Stench,Breeze,Glitter,Bump,Scream,Rustle]
 
 initialize([Stench,no,no,no,no,no]) :-
     initialize_world,
     initialize_agent,
-    stench(Stench).
-    % breeze(Breeze),   % no pit on [1,1] and grid: [1,2],[2,1] or dodeca: [2,2],[5,2],[8,2]
-    % rustle(Rustle),   % no bat on [1,1], and idem above] 
-    % glitter(Glitter). % no gold on [1,1]
+    stench(Stench).        % #1 stench(Stench) Wumpus may be nearby (no Wumpus on [1,1])
+    % breeze(Breeze),      % #2 no pit on [1,1] and grid: [1,2],[2,1] or dodeca: [2,2],[5,2],[8,2]
+    % glitter(Glitter),    % #3 no gold on [1,1]
+    % goforward(Bump),     % #4 not needed here, just for documentation
+    % shoot_arrow(Scream), % #5 not needed here, just for documentation
+    % rustle(Rustle).      % #6 no bat on [1,1], and grid: [1,2],[2,1] or dodeca: [2,2],[5,2],[8,2]
 
 % initialize_world: gather information
 initialize_world :-
     ww_retract_all, % retract ww list (wumpus, gold, pit and bat, and all initial state variables)
-    assert_setup,  % assert user or default setup
-    get_setup(L),  % [Size, Type, Move, Gold, Pit, Bat]),
+    assert_setup,   % assert user or default setup
+    get_setup(L),   % [Size, Type, Move, Gold, Pit, Bat]),
     L=[Size, _, Move, Gold, Pit, Bat],
     ww_addto_init_state(world_extent(Size)),
     random(0, 4, WAngN),
     WAng is WAngN * 90,
     ww_addto_init_state(wumpus_orientation(WAng)),   % Random Wumpus start angle
-    ww_addto_init_state(wumpus_health(alive)),
-    ww_addto_init_state(wumpus_last_action(sit)),
+    ww_addto_init_state(wumpus_health(alive)),       % Wumpus is alive and well (and hungry)
+    ww_addto_init_state(wumpus_last_action(sit)),    % Wumpus last move to use as basic AI memory
     ww_addto_init_state(gold_probability(Gold)),     % Probability that a location has gold
     ww_addto_init_state(pit_probability(Pit)),       % Probability that a non-(1,1) location has a pit
     ww_addto_init_state(bat_probability(Bat)),       % Probability that a location has bats
@@ -329,8 +332,6 @@ initialize_world_type([_,fig62,_,_,_,_]) :-
     ww_addto_init_state(pit(3,3)),  % pit 2
     ww_addto_init_state(pit(4,4)),  % pit 3
     ww_assert_all.
-    %ww_initial_state(L),
-    %assert_list(L).
 
 initialize_world_type([E, Type, _, PG, PP, PB]) :-
     gold_squares(E, Type, GS),
@@ -340,8 +341,6 @@ initialize_world_type([E, Type, _, PG, PP, PB]) :-
     ww_place_it(bat, PB, HS),            % place some bats not near the entrance
     ww_place_it(wumpus_location, 1, GS), % exactly one wumpus, initialize it not in [1,1]
     ww_assert_all.
-    %ww_initial_state(L),
-    %assert_list(L).
 
 % initialize_agent: agent is initially alive, destitute (except for one
 %   arrow), in grid 1,1 and facing to the right (0 degrees).
@@ -359,18 +358,22 @@ initialize_agent :-
     assert(agent_in_cave(yes)),
     assert(agent_health(alive)),
     assert(agent_gold(0)),
-    assert(agent_arrows(1)), % TODO: setup choose number of arrows
+    assert(agent_arrows(1)),
     assert(agent_score(0)),
     assert(agent_location(1,1)),
     assert(agent_num_actions(1)).
 
-gold_squares(E, grid, GS) :- % not used by fig62
-    all_squares_type(grid, E, All),
+gold_squares(E, T, GS) :- % not used by fig62
+    all_squares_type(T, E, All),
     delete(All, [1,1], GS).  % all squares but [1,1]
 
-gold_squares(E, dodeca, GS) :-
-    all_squares_type(dodeca, E, All),
-    delete(All, [1,1], GS).  % all squares but [1,1]
+%gold_squares(E, grid, GS) :- % not used by fig62
+%    all_squares_type(grid, E, All),
+%    delete(All, [1,1], GS).  % all squares but [1,1]
+%
+%gold_squares(E, dodeca, GS) :-
+%    all_squares_type(dodeca, E, All),
+%    delete(All, [1,1], GS).  % all squares but [1,1]
 
 hazard_squares(E, grid, HS) :- % not used by fig62
     gold_squares(E, grid, GS),
@@ -414,75 +417,6 @@ dodeca_map([
     [20, [19, 13, 16, 0]]   % Cave 20: east 19,   north 13,   west 16,   south none
     ]).
 
-% all_squares(AllSqrs): AllSqrs is the list of all possible
-%   squares [X,Y] in a wumpus world of
-%   grid: size Extent by Extent.
-%   dodeca: 20 rooms, [Room Number, Room Level]
-
-all_squares(AllSqrs) :-
-    get_setup([E,T|_]), %[Size, Type, Move, Gold, Pit, Bat]),
-    all_squares_type(T, E, AllSqrs).
-
-all_squares_type(dodeca, 20, [[1,1],[2,2],[3,3],[4,3],[5,2],[6,3],[7,3],[8,2],[9,3],[10,3],[11,4],[12,4],[13,5],[14,4],[15,4],[16,5],[17,4],[18,4],[19,5],[20,6]]).
-
-all_squares_type(grid, Extent, AllSqrs) :-
-    all_squares_1(Extent,1,1,AllSqrs).
-
-all_squares_1(Extent,Extent,Extent,[[Extent,Extent]]).
-
-all_squares_1(Extent,Row,Extent,[[Row,Extent]|RestSqrs]) :-
-    Row < Extent,
-    Row1 is Row + 1,
-    all_squares_1(Extent,Row1,1,RestSqrs).
-
-all_squares_1(Extent,Row,Col,[[Row,Col]|RestSqrs]) :-
-    Col < Extent,
-    Col1 is Col + 1,
-    all_squares_1(Extent,Row,Col1,RestSqrs).
-
-% place_objects(Object,P,Squares): For each square in Squares, place
-%   Object at square with probability P.
-
-ww_place_it(_, _, []).
-
-ww_place_it(gold, Qt, Sq) :-
-    float(Qt),
-    ww_place_objects_det(gold, 1, Sq),   % put one for sure
-    ww_place_objects_prob(gold, Qt, Sq). % and lets see how many others
-
-ww_place_it(Ob, Qt, Sq) :-
-    float(Qt),
-    ww_place_objects_prob(Ob, Qt, Sq).
-
-ww_place_it(Ob, Qt, Sq) :-
-    integer(Qt),
-    ww_place_objects_det(Ob, Qt, Sq).
-
-ww_place_objects_prob(_, _, []).
-
-ww_place_objects_prob(Object, P, [Sq|Squares]) :-
-    maybe(P),   % succeeds with probability P
-    !,
-    Fact =.. [Object|Sq], % Fact = pit(X,Y)
-    ww_addto_init_state(Fact),
-    ww_place_objects_prob(Object, P, Squares).
-
-ww_place_objects_prob(Object, P, [_|Squares]) :-
-    ww_place_objects_prob(Object, P, Squares).
-
-ww_place_objects_det(_, _, []).
-
-ww_place_objects_det(_, 0, [_|_]).
-
-ww_place_objects_det(Obj, Qtd, [H|T]) :-
-    Qtd>0,
-    random_member(Sq, [H|T]),
-    delete([H|T], Sq, S1),
-    Fact =.. [Obj | Sq], % Fact = pit(X,Y)
-    ww_addto_init_state(Fact),
-    Q1 is Qtd - 1,
-    ww_place_objects_det(Obj, Q1, S1).
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % execute(Action,Percept): executes Action and returns Percept
 %
@@ -497,7 +431,7 @@ ww_place_objects_det(Obj, Qtd, [H|T]) :-
 %                 for each piece of gold
 %   7. sit:       do nothing, costs one action and -1 score
 %
-%   Percept = [Stench,Breeze,Glitter,Bump,Scream,Rustle] 
+%   Percept = [Stench,Breeze,Glitter,Bump,Scream,Rustle]
 %   each having a value of either 'yes' or 'no'.
 
 execute(_,[no,no,no,no,no,no]) :-
@@ -641,7 +575,7 @@ goforward(yes).     % Ran into wall, Bump = yes
     %    format("Not possible! Bumped a wall!", []).
 
 % rustle(Rustle): Rustle = yes if bats are nearby (adjacent)
-% Rustle = no if no bats or 
+% Rustle = no if no bats or
 % agent is in the bat's square (for a period short of time of course)
 
 rustle(yes) :-
@@ -705,8 +639,7 @@ update_agent_health :-
     retract(agent_score(S)),
     S1 is S - 500,
     assert(agent_score(S1)),
-    format("You are Wumpus food!~n",[]).
-%format("... Oops! You are Wumpus food!~n",[]).
+    format("... Oops! You are Wumpus food!~n",[]).
 
 update_agent_health :-
     agent_location(X,Y),
@@ -764,7 +697,7 @@ display_world :-
     agent_arrows(N),
     agent_gold(G),
     agent_location(X,Y),
-    format('wumpus_move_rule(~w)~n~n',[Rule]),
+    format('wumpus_move_rule(~w)~n',[Rule]),
     format('wumpus_health(~w)~n',[WH]),
     format('wumpus_orientation(~d)~n',[WA]),
     format('wumpus_location(~d,~d)~n',[WLX, WLY]),
@@ -917,12 +850,55 @@ ww_retract_list([]).
 
 ww_retract_list([[N, A]|Fs]) :-
     functor(U, N, A),    % functor(U, gold, 2), U=gold(_,_)
-    retractall(U),       % retract all facts in the list 
+    retractall(U),       % retract all facts in the list
     ww_retract_list(Fs).
 
 ww_par(F, P) :- % F=gold(1,3), P=[gold, 2]
     functor(F, N, A),
     P = [N, A].
+
+% place_objects(Object,P,Squares): For each square in Squares, place
+%   Object at square with probability P.
+
+ww_place_it(_, _, []).
+
+ww_place_it(gold, Qt, Sq) :-
+    float(Qt),
+    ww_place_objects_det(gold, 1, Sq),   % put one for sure
+    ww_place_objects_prob(gold, Qt, Sq). % and lets see how many others
+
+ww_place_it(Ob, Qt, Sq) :-
+    float(Qt),
+    ww_place_objects_prob(Ob, Qt, Sq).
+
+ww_place_it(Ob, Qt, Sq) :-
+    integer(Qt),
+    ww_place_objects_det(Ob, Qt, Sq).
+
+ww_place_objects_prob(_, _, []).
+
+ww_place_objects_prob(Object, P, [Sq|Squares]) :-
+    maybe(P),   % succeeds with probability P
+    !,
+    Fact =.. [Object|Sq], % Fact = pit(X,Y)
+    ww_addto_init_state(Fact),
+    ww_place_objects_prob(Object, P, Squares).
+
+ww_place_objects_prob(Object, P, [_|Squares]) :-
+    ww_place_objects_prob(Object, P, Squares).
+
+ww_place_objects_det(_, _, []).
+
+ww_place_objects_det(_, 0, [_|_]).
+
+ww_place_objects_det(Obj, Qtd, [H|T]) :-
+    Qtd>0,
+    random_member(Sq, [H|T]),
+    delete([H|T], Sq, S1),
+    Fact =.. [Obj | Sq], % Fact = pit(X,Y)
+    ww_addto_init_state(Fact),
+    Q1 is Qtd - 1,
+    ww_place_objects_det(Obj, Q1, S1).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % check for goforward, turnright, turnleft, shoot, grab or climb.
@@ -941,14 +917,15 @@ check_agent_action_which(_) :- format("Agent gave unknow action!~n"), !, fail.
 % check_setup : check for user definition, or use default values
 %
 % world_setup
-%    1.   Size: 2..20, with some constrictions: [2-9] grid; 20, dodeca; 4, fig62
-%    2.   Type: fig62, grid or dodeca
-%    3.   Move:  walker, runner, wanderer, spinner, hoarder, spelunker, stander, trapper, bulldozer
-%    4.   Gold: Integer is deterministic number, float from 0.0<G<1.0 is probabilistic
-%    5.   Pits: Idem, 0 is no pits.
-%    6.   Bats: Idem, 0 is no bats.
+%    1.  Size: 2..20, with some constrictions: [2-9] grid; 20, dodeca; 4, fig62
+%    2.  Type: fig62, grid or dodeca
+%    3.  Move: walker, runner, wanderer, spinner, hoarder, spelunker, stander, trapper, bulldozer
+%    4.  Gold: Integer is deterministic number, float from 0.0<G<1.0 is probabilistic
+%    5.  Pits: Idem, 0 is no pits.
+%    6.  Bats: Idem, 0 is no bats.
 %
-% example: world_setup([5, grid, stander, 1, 3, 1]). % size 5, 1 gold, 3 pits and 1 bat
+% examples:
+% world_setup([5, grid, stander, 1, 3, 1]). % size 5, 1 gold, 3 pits and 1 bat
 % world_setup([4, grid, stander, 0.1, 0.2, 0.1])). % default
 
 %get_setup([Size, Type, Move, Gold, Pit, Bat])
@@ -1022,7 +999,7 @@ check_setup_gold(G0, _, G0) :-
 
 check_setup_gold(G0, S1, G0) :-
     integer(G0),
-    G0>0, % at least one gold 
+    G0>0, % at least one gold
     MX is S1 * S1 - 1,
     G0=<MX.
 
@@ -1154,8 +1131,8 @@ wumpus_select_action(spelunker, _, WAct) :- % move towards a pit
 % walker : (original) moves when it hears a shoot, or you enter its cave
 
 wumpus_select_action(walker, shoot, WAct) :- % move if hear a shoot
-    agent_arrows(Arrows),
-    Arrows > 0, !,                  % agent has an arrow and will use it!
+    agent_arrows(A),
+    A > 0, !,  % agent has an arrow and he is using it right now!
     random_member(WAct, [turnleft, turnright, goforward, goforward]).
 
 wumpus_select_action(walker, _, WAct) :- % or if the agent comes in
@@ -1187,7 +1164,7 @@ wumpus_select_action(bulldozer, _, WAct) :- % if agent smells decaying, maybe si
     move_towards(WX, WY, WAng, AX, AY, Tow),
     random_member(WAct, [sit, Tow, Tow, Tow]).
 
-wumpus_select_action(bulldozer, _, WAct) :- % if agent at [1,1] or not stench random 
+wumpus_select_action(bulldozer, _, WAct) :- % if agent at [1,1] or not stench random
     random_member(WAct, [sit, sit, turnleft, turnright, goforward]).
 
 % trapper : goes for the kill even from distance. The only safe place is [1,1]
@@ -1269,7 +1246,7 @@ execute_wumpus_action(goforward) :-
     retract(wumpus_location(X, Y)),   % update location
     assert(wumpus_location(X1, Y1)).
 
-execute_wumpus_action(goforward).  % unsuccessfully
+execute_wumpus_action(goforward).     % unsuccessfully
 
 execute_wumpus_action(turnleft) :-
     retract(wumpus_orientation(WAng)),
@@ -1330,7 +1307,6 @@ facing_home_type(2, 1, 180, T) :-
     (T == grid ; T == fig62).
 
 facing_home_type(_, 2, 270, dodeca).
-
 
 % move_towards(X1, Y1, Ang, X2, Y2, Action):
 % If (X1, Y1) == (X2, Y2), action is sit.
@@ -1603,4 +1579,30 @@ kill_wumpus :-
     retract(agent_score(S)),
     S1 is S + 500, % 500 point for killing the wumpus
     assert(agent_score(S1)).
+
+% all_squares(AllSqrs): AllSqrs is the list of all possible
+%   squares [X,Y] in a wumpus world of
+%   grid: size Extent by Extent.
+%   dodeca: 20 rooms, [Room Number, Room Level]
+
+all_squares(AllSqrs) :-
+    get_setup([E,T|_]), %[Size, Type, Move, Gold, Pit, Bat]),
+    all_squares_type(T, E, AllSqrs).
+
+all_squares_type(dodeca, 20, [[1,1],[2,2],[3,3],[4,3],[5,2],[6,3],[7,3],[8,2],[9,3],[10,3],[11,4],[12,4],[13,5],[14,4],[15,4],[16,5],[17,4],[18,4],[19,5],[20,6]]).
+
+all_squares_type(grid, Extent, AllSqrs) :-
+    all_squares_1(Extent,1,1,AllSqrs).
+
+all_squares_1(Extent,Extent,Extent,[[Extent,Extent]]).
+
+all_squares_1(Extent,Row,Extent,[[Row,Extent]|RestSqrs]) :-
+    Row < Extent,
+    Row1 is Row + 1,
+    all_squares_1(Extent,Row1,1,RestSqrs).
+
+all_squares_1(Extent,Row,Col,[[Row,Col]|RestSqrs]) :-
+    Col < Extent,
+    Col1 is Col + 1,
+    all_squares_1(Extent,Row,Col1,RestSqrs).
 
