@@ -909,32 +909,20 @@ ww_assert_list([Fact|Facts]) :-
 ww_retract_all :-
     (ww_initial_state(L) ; L = []), !,
     retractall(ww_initial_state(_)),
-    ww_retract_list(L).
-
-    %retractall(world_extent(_)),
-    %retractall(wumpus_orientation(_)),
-    %retractall(wumpus_health(_)),
-    %retractall(wumpus_last_action(_)),
-    %retractall(wumpus_location(_,_)),
-    %retractall(wumpus_move_rule(_)),
-    %retractall(gold(_,_)),
-    %retractall(pit(_,_)),
-    %retractall(bat(_,_)),
-    %retractall(pit_probability(_)),
-    %retractall(bat_probability(_)),
-    %retractall(gold_probability(_)),
-    %retractall(max_agent_lifes(_)),
-    %retractall(max_agent_actions(_)),
-    %retractall(ww_initial_state(_)),
-    %assert(ww_initial_state([])).
+    maplist(ww_par, L, Pl), % Pl = [[gold, 2], [pit, 2], ...]
+    list_to_set(Pl, S),
+    ww_retract_list(S).
 
 ww_retract_list([]).
 
-ww_retract_list([F|Fs]) :-
-    functor(F, N, A),    % functor(gold(1,3), N, A), N=gold, A=2
+ww_retract_list([[N, A]|Fs]) :-
     functor(U, N, A),    % functor(U, gold, 2), U=gold(_,_)
-    retractall(U),       % retract all golds (more than once each! BUG)
+    retractall(U),       % retract all facts in the list 
     ww_retract_list(Fs).
+
+ww_par(F, P) :- % F=gold(1,3), P=[gold, 2]
+    functor(F, N, A),
+    P = [N, A].
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % check for goforward, turnright, turnleft, shoot, grab or climb.
