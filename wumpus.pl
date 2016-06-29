@@ -144,7 +144,6 @@
     gold_probability/1,     % ww Probability that a location has gold (default 0.10)
     pit_probability/1,      % ww Probability that a non-(1,1) location has a pit (default 0.20)
     bat_probability/1,      % ww Probability that a non-(1,1) location has a bat (default 0.10)
-    max_agent_lifes/1,      % ww Maximum agent tries (climb or die) per world (default 1)
     max_agent_actions/1,    % ww Maximum actions per trial allowed by agent (default 4*squardes)
     agent_location/2,       % Agent location: (X,Y) on grid; (CaveNumber, Level) on dodeca;
     agent_orientation/1,    % Agent orientation: 0/East/Right, 90/North/Up, 180/West/Left, 270/South/Down
@@ -315,7 +314,6 @@ initialize_world :-
     ww_addto_init_state(gold_probability(Gold)),     % Probability that a location has gold
     ww_addto_init_state(pit_probability(Pit)),       % Probability that a non-(1,1) location has a pit
     ww_addto_init_state(bat_probability(Bat)),       % Probability that a location has bats
-    ww_addto_init_state(max_agent_lifes(1)),         % Maximum agent lifes (climb or die) per world
     Actions is Size * Size * 4,                      % 4 actions per square average (fig62 is 2.875 moves per square)
     ww_addto_init_state(max_agent_actions(Actions)), % Maximum actions per trial allowed by agent
     ww_addto_init_state(wumpus_move_rule(Move)),     % Wumpus move style
@@ -959,33 +957,13 @@ check_setup([_, fig62|_], [4, fig62, stander, 1, 3, 0]) :- !. % Size 4, fig62, w
 % grid and dodeca
 check_setup([Size, Type, Move, Gold, Pit, Bat], [S1, T1, M1, G1, P1, B1]) :-
     check_setup_type(Type, T1),
-    check_setup_size(T1, Size, S1),
+    check_setup_size(T1, Size, S1), !, % ! fix alternatives (debug A:alternatives)
     check_setup_move(Move, M1),
-    %check_setup_lifes(Lifes),
     check_setup_gold_type(Gold, S1, G1, T1),
     check_setup_hazard_type(Pit, S1, P1, T1), % Qtd pits, size, Qtd Pits validated
     check_setup_hazard_type(Bat, S1, B1, T1).
 
-% grid
-%check_setup([Size, grid, Move, Gold, Pit, Bat], [S1, grid, M1, G1, P1, B1]) :-
-%    check_setup_size(grid, Size, S1),
-%    check_setup_move(Move, M1),
-%    %check_setup_lifes(Lifes),
-%    check_setup_gold(Gold, S1, G1),
-%    check_setup_hazard(Pit, S1, P1), % Qtd pits, size, Qtd Pits validated
-%    check_setup_hazard(Bat, S1, B1).
-
-% dodeca
-%check_setup([_, dodeca, Move, Gold, Pit, Bat], [S1, dodeca, M1, G1, P1, B1]) :-
-%    check_setup_size(dodeca, 20, S1),
-%    check_setup_move(Move, M1),
-%    %check_setup_lifes(Lifes),
-%    check_setup_gold(Gold, S1, G1),
-%    check_setup_hazard(Pit, S1, P1),
-%    check_setup_hazard(Bat, S1, B1).
-
 % Check map type
-check_setup_type(fig62, fig62).
 check_setup_type(grid, grid).
 check_setup_type(dodeca, dodeca).
 check_setup_type(_, grid).
@@ -1005,8 +983,6 @@ check_setup_move(spelunker, spelunker). % go to a pit and sit
 check_setup_move(trapper, trapper). % hunt the agent from distance
 check_setup_move(bulldozer, bulldozer). % hunt the agent if smell it
 check_setup_move(_, stander). % do not move (default)
-
-%check_setup_lifes(1).  %check_setup_lifes(T) :- T>=1, T=<5. % Lifes per labirinth
 
 % Gold, Pit and Bat : integer, fixed number; float, probability
 check_setup_gold_type(G0, _, G0, _) :-
