@@ -954,25 +954,41 @@ assert_setup :-
 % [Size, Type, Move, Gold, Pit, Bat])
 
 % fig62
-check_setup([_, fig62|_], [4, fig62, stander, 1, 3, 0]). % Size 4, fig62, wumpus standing still, 1 gold, 3 pits, no bats
+check_setup([_, fig62|_], [4, fig62, stander, 1, 3, 0]) :- !. % Size 4, fig62, wumpus standing still, 1 gold, 3 pits, no bats
+
+% grid and dodeca
+check_setup([Size, Type, Move, Gold, Pit, Bat], [S1, T1, M1, G1, P1, B1]) :-
+    check_setup_type(Type, T1),
+    check_setup_size(T1, Size, S1),
+    check_setup_move(Move, M1),
+    %check_setup_lifes(Lifes),
+    check_setup_gold_type(Gold, S1, G1, T1),
+    check_setup_hazard_type(Pit, S1, P1, T1), % Qtd pits, size, Qtd Pits validated
+    check_setup_hazard_type(Bat, S1, B1, T1).
 
 % grid
-check_setup([Size, grid, Move, Gold, Pit, Bat], [S1, grid, M1, G1, P1, B1]) :-
-    check_setup_size(grid, Size, S1),
-    check_setup_move(Move, M1),
-    %check_setup_lifes(Lifes),
-    check_setup_gold(Gold, S1, G1),
-    check_setup_hazard(Pit, S1, P1), % Qtd pits, size, Qtd Pits validated
-    check_setup_hazard(Bat, S1, B1).
+%check_setup([Size, grid, Move, Gold, Pit, Bat], [S1, grid, M1, G1, P1, B1]) :-
+%    check_setup_size(grid, Size, S1),
+%    check_setup_move(Move, M1),
+%    %check_setup_lifes(Lifes),
+%    check_setup_gold(Gold, S1, G1),
+%    check_setup_hazard(Pit, S1, P1), % Qtd pits, size, Qtd Pits validated
+%    check_setup_hazard(Bat, S1, B1).
 
 % dodeca
-check_setup([_, dodeca, Move, Gold, Pit, Bat], [S1, dodeca, M1, G1, P1, B1]) :-
-    check_setup_size(dodeca, 20, S1),
-    check_setup_move(Move, M1),
-    %check_setup_lifes(Lifes),
-    check_setup_gold(Gold, S1, G1),
-    check_setup_hazard(Pit, S1, P1),
-    check_setup_hazard(Bat, S1, B1).
+%check_setup([_, dodeca, Move, Gold, Pit, Bat], [S1, dodeca, M1, G1, P1, B1]) :-
+%    check_setup_size(dodeca, 20, S1),
+%    check_setup_move(Move, M1),
+%    %check_setup_lifes(Lifes),
+%    check_setup_gold(Gold, S1, G1),
+%    check_setup_hazard(Pit, S1, P1),
+%    check_setup_hazard(Bat, S1, B1).
+
+% Check map type
+check_setup_type(fig62, fig62).
+check_setup_type(grid, grid).
+check_setup_type(dodeca, dodeca).
+check_setup_type(_, grid).
 
 % Map size (or extension)
 check_setup_size(grid, S0, S0) :- S0>=2, S0=<9.
@@ -993,31 +1009,41 @@ check_setup_move(_, stander). % do not move (default)
 %check_setup_lifes(1).  %check_setup_lifes(T) :- T>=1, T=<5. % Lifes per labirinth
 
 % Gold, Pit and Bat : integer, fixed number; float, probability
-check_setup_gold(G0, _, G0) :-
+check_setup_gold_type(G0, _, G0, _) :-
     float(G0),
     check_setup_prob(G0). % Gold Probability P
 
-check_setup_gold(G0, S1, G0) :-
+check_setup_gold_type(G0, S1, G0, grid) :-
     integer(G0),
     G0>0, % at least one gold
     MX is S1 * S1 - 1,
     G0=<MX.
 
-check_setup_gold(_, _, 1). % default, one piece of gold
+check_setup_gold_type(G0, _, G0, dodeca) :-
+    integer(G0),
+    G0>0,
+    G0=<19.
 
-check_setup_hazard(H0, _, H0) :-
+check_setup_gold_type(_, _, 1, _). % default, one piece of gold
+
+check_setup_hazard_type(H0, _, H0, _) :-
     float(H0),
     check_setup_prob(H0).
 
-check_setup_hazard(H0, S1, H0) :-
+check_setup_hazard_type(H0, S1, H0, grid) :-
     integer(H0),
     H0>=0,
     MX is S1 * S1 - 3,
     H0=<MX.
 
-check_setup_hazard(_, 2, 1). % Default 1 hazard, size = 2x2
-check_setup_hazard(_, 3, 2). % Default 2 hazards, size = 3x3
-check_setup_hazard(_, _, 3). % Default 3 hazards, size >= 4x4
+check_setup_hazard_type(H0, _, H0, dodeca) :-
+    integer(H0),
+    H0>=0,
+    H0=<16.
+
+check_setup_hazard_type(_, 2, 1, _). % Default 1 hazard, size = grid 2x2
+check_setup_hazard_type(_, 3, 2, _). % Default 2 hazards, size = grid 3x3
+check_setup_hazard_type(_, _, 3, _). % Default 3 hazards, size grid >= 4x4 or dodeca = 20
 
 check_setup_prob(P) :- P>0.0, P<1.0.  % Probability 0.0<P<1.0
 
