@@ -159,9 +159,8 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Run by hand
 %
-%L0=[Size, Type, Move, Gold, Pit, Bat], L1 add [1,1] start position
-%L0=[4, grid, stander, 0.1, 0.2, 0.1] % default
-%L1=[4, grid, stander, 0.1, 0.2, 0.1, [1,1]]
+%L=[Size, Type, Move, Gold, Pit, Bat, Adv], Adv=[Rand]
+%L=[4, grid, stander, 0.1, 0.2, 0.1, [no]] % default
 manual_setup(L0) :-
     check_setup(L0, L1),
     retractall(get_setup(_)),
@@ -290,21 +289,21 @@ run_agent_action(Percept) :-
 %   agent and returns the Percept from square 1,1.
 %   Percept = [Stench,Breeze,Glitter,Bump,Scream,Rustle]
 
-initialize([Stench,no,no,no,no,no]) :-
+initialize([Stench, Breeze, Glitter, no, no, Rustle]) :-
     initialize_world,
     initialize_agent,
-    stench(Stench).        % #1 stench(Stench) Wumpus may be nearby (no Wumpus on [1,1])
-    % breeze(Breeze),      % #2 no pit on [1,1] and grid: [1,2],[2,1] or dodeca: [2,2],[5,2],[8,2]
-    % glitter(Glitter),    % #3 no gold on [1,1]
+    stench(Stench),        % #1 stench(Stench) Wumpus may be nearby (no Wumpus on [1,1])
+    breeze(Breeze),        % #2 no pit on [1,1] and grid: [1,2],[2,1] or dodeca: [2,2],[5,2],[8,2]
+    glitter(Glitter),      % #3 no gold on [1,1]
+    rustle(Rustle).        % #6 no bat on [1,1], and grid: [1,2],[2,1] or dodeca: [2,2],[5,2],[8,2]
     % goforward(Bump),     % #4 not needed here, just for documentation
     % shoot_arrow(Scream), % #5 not needed here, just for documentation
-    % rustle(Rustle).      % #6 no bat on [1,1], and grid: [1,2],[2,1] or dodeca: [2,2],[5,2],[8,2]
 
 % initialize_world: gather information
 initialize_world :-
     ww_retract_all, % retract ww list (wumpus, gold, pit and bat, and all initial state variables)
     assert_setup,   % assert user or default setup
-    get_setup(L),   % [Size, Type, Move, Gold, Pit, Bat]),
+    get_setup(L),   % L=[Size, Type, Move, Gold, Pit, Bat, Adv], Adv=[Rand]
     L=[Size, _, Move, Gold, Pit, Bat|_],
     ww_addto_init_state(world_extent(Size)),
     random(0, 4, WAngN),
@@ -345,9 +344,6 @@ initialize_world_type([E, Type, _, PG, PP, PB|_]) :-
 %   arrow), in grid 1,1 and facing to the right (0 degrees).
 
 initialize_agent :-
-    get_setup(L),   % [Size, Type, Move, Gold, Pit, Bat, [Ax, Ay]],
-    L=[_Size, _Type, _Move, _Gold, _Pit, _Bat, [Ax, Ay]],
-    retractall(agent_location(_,_)),
     retractall(agent_orientation(_)),
     retractall(agent_in_cave(_)),
     retractall(agent_health(_)),
@@ -361,20 +357,36 @@ initialize_agent :-
     assert(agent_gold(0)),
     assert(agent_arrows(1)),
     assert(agent_score(0)),
-    assert(agent_location(Ax, Ay)),
-    assert(agent_num_actions(1)).
+    assert(agent_num_actions(1)),
+    initialize_agent_advanced.
+
+initialize_agent_advanced :-
+    get_setup(L),   % [Size, Type, Move, Gold, Pit, Bat, [Ax, Ay]],
+    L=[Size, Type, _Move, _Gold, _Pit, _Bat, Adv], % [Ax, Ay]],
+    initialize_agent_location(Size, Type, Adv).
+
+initialize_agent_location(S, T, [yes|_]) :- % Rand = yes, random agent location
+    !,
+    all_squares_type(T, S, All),
+    findall([Xb, Yb], bat(Xb, Yb), AllBats), % find all bats
+    findall([Xp, Yp], pit(Xp, Yp), AllPits), % find all pits
+    findall([Xg, Yg], gold(Xg, Yg), AllGolds), % find all golds
+    wumpus_location(Wx, Wy),
+    subtract(All, AllBats, AllButBats),
+    subtract(AllButBats, AllPits, AllBBPits),
+    subtract(AllBBPits, AllGolds, AllBBPGolds),
+    delete(AllBBPGolds, [Wx, Wy], AllButs),
+    random_member([Ax, Ay], AllButs),
+    retractall(agent_location(_,_)),
+    assert(agent_location(Ax, Ay)).
+
+initialize_agent_location(_, _, [no|_]) :- % Rand = no, agent at [1,1]
+    retractall(agent_location(_,_)),
+    assert(agent_location(1, 1)).
 
 gold_squares(E, T, GS) :- % not used by fig62
     all_squares_type(T, E, All),
     delete(All, [1,1], GS).  % all squares but [1,1]
-
-%gold_squares(E, grid, GS) :- % not used by fig62
-%    all_squares_type(grid, E, All),
-%    delete(All, [1,1], GS).  % all squares but [1,1]
-%
-%gold_squares(E, dodeca, GS) :-
-%    all_squares_type(dodeca, E, All),
-%    delete(All, [1,1], GS).  % all squares but [1,1]
 
 hazard_squares(E, grid, HS) :- % not used by fig62
     gold_squares(E, grid, GS),
@@ -916,26 +928,37 @@ check_agent_action_which(_) :- format("Agent gave unknow action!~n"), !, fail.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % check_setup : check for user definition, or use default values
-%
+% 
 % world_setup
-%    1.  Size: 2..20, with some constrictions: [2-9] grid; 20, dodeca; 4, fig62
+%    1.  Size: 2..20, with some constrictions: [2-9] grid; 20, dodeca; 4, fig62. Zero for random size.
 %    2.  Type: fig62, grid or dodeca
 %    3.  Move: walker, runner, wanderer, spinner, hoarder, spelunker, stander, trapper, bulldozer
 %    4.  Gold: Integer is deterministic number, float from 0.0<G<1.0 is probabilistic
 %    5.  Pits: Idem, 0 is no pits.
 %    6.  Bats: Idem, 0 is no bats.
+%    7.  Advanced list: list with advanced setup options
+%           - Rand: yes/no, random agent start location
+%           - other items reserved for future use
+%
+%   L = [Size, Type, Move, Gold, Pit, Bat, Adv]
+%   Adv = [Rand|_]
 %
 % examples:
-% world_setup([5, grid, stander, 1, 3, 1]). % size 5, 1 gold, 3 pits and 1 bat
+% world_setup([5, grid, stander, 1, 3, 1, []]). % size 5, 1 gold, 3 pits and 1 bat
 % world_setup([4, grid, stander, 0.1, 0.2, 0.1])). % default
+% world_setup([0, grid, stander, 0.1, 0.1, 0.1, [yes]]):
+%   - random size, random golds, pits and bats
+%   - grid, wumpus movement 'walker'
+%   - [yes]: random agent start location
+%
 
-%get_setup([Size, Type, Move, Gold, Pit, Bat, [Ax, Ay]])
+%get_setup([Size, Type, Move, Gold, Pit, Bat, [Rand]])
 assert_setup :-
     current_predicate(world_setup, world_setup(_)),
     world_setup(Lin), % user definition
     check_setup(Lin, Lout),
     !,
-    format("User defined setup: Size=~w, Type=~w, Move=~w, Gold=~w, Pit=~w, Bat=~w, Start=~w~n", Lout),
+    format("User defined setup: Size=~w, Type=~w, Move=~w, Gold=~w, Pit=~w, Bat=~w, Adv=~w~n", Lout),
     retractall(get_setup(_)),
     assert(get_setup(Lout)).
 
@@ -943,28 +966,34 @@ assert_setup :-
     current_predicate(get_setup, get_setup(_)), % case manual_setup asserted
     get_setup(Lout),
     !,
-    format("Reusing setup: Size=~w, Type=~w, Move=~w, Gold=~w, Pit=~w, Bat=~w, Start=~w~n", Lout).
+    format("Reusing setup: Size=~w, Type=~w, Move=~w, Gold=~w, Pit=~w, Bat=~w, Adv=~w~n", Lout).
 
 assert_setup :-
-    Lout=[4, grid, stander, 0.1, 0.2, 0.1, [1, 1]], % defaulf
-    format("Default setup: Size=~w, Type=~w, Move=~w, Gold=~w, Pit=~w, Bat=~w, Start=~w~n", Lout),
+    Lout=[4, grid, stander, 0.1, 0.2, 0.1, [no]], % defaulf
+    format("Default setup: Size=~w, Type=~w, Move=~w, Gold=~w, Pit=~w, Bat=~w, Adv=~w~n", Lout),
     retractall(get_setup(_)),
     assert(get_setup(Lout)). % default
 
 % correcting wrong combinations
-% [Size, Type, Move, Gold, Pit, Bat, [Ax, Ay]]
+% [Size, Type, Move, Gold, Pit, Bat, [Adv]]
 
 % fig62
-check_setup([_, fig62|_], [4, fig62, stander, 1, 3, 0, [1,1]]) :- !. % Size 4, fig62, wumpus standing still, 1 gold, 3 pits, no bats
+% Size 4, wumpus stander, 1 gold, 3 pits, no bats, and agent_location may be random or not
+check_setup([_, fig62, _, _, _, _, Adv], [4, fig62, stander, 1, 3, 0, Adv]) :- !.
 
 % grid and dodeca
-check_setup([Size, Type, Move, Gold, Pit, Bat], [S1, T1, M1, G1, P1, B1, A1]) :-
+check_setup([Size, Type, Move, Gold, Pit, Bat, Adv], [S1, T1, M1, G1, P1, B1, A1]) :-
     check_setup_type(Type, T1),
-    check_setup_size(T1, Size, S1, A1), !, % ! fix alternatives (debug A:alternatives)
+    check_setup_size(T1, Size, S1), !, % ! fix alternatives (debug A:alternatives)
     check_setup_move(Move, M1),
     check_setup_gold_type(Gold, S1, G1, T1),
     check_setup_hazard_type(Pit, S1, P1, T1), % Qtd pits, size, Qtd Pits validated
-    check_setup_hazard_type(Bat, S1, B1, T1).
+    check_setup_hazard_type(Bat, S1, B1, T1),
+    check_setup_advanced(Adv, A1).
+
+% Check advanced list
+check_setup_advanced([yes], [yes]).
+check_setup_advanced(_, [no]).
 
 % Check map type
 check_setup_type(grid, grid).
@@ -973,17 +1002,10 @@ check_setup_type(_, grid).
 
 % Map size (or extension)
 % if 0, random size and random agent start position
-check_setup_size(grid, 0, S0, [Ax, Ay]) :-
-    random(2, 10, S0),
-    S1 is S0 +1,
-    random(1, S1, Ax),
-    random(1, S1, Ay).
-check_setup_size(grid, S0, S0, [1, 1]) :- S0>=2, S0=<9.
-check_setup_size(grid, _, 4, [1, 1]).
-check_setup_size(dodeca, 0, 20, [Ax, Ay]) :-
-    random(1, 21, Ax),
-    random(1, 21, Ay).
-check_setup_size(dodeca, _, 20, [1, 1]).
+check_setup_size(grid, 0, S0) :- random(2, 10, S0).
+check_setup_size(grid, S0, S0) :- S0>=2, S0=<9.
+check_setup_size(grid, _, 4).
+check_setup_size(dodeca, _, 20).
 
 % Types of Wumpus Movement
 check_setup_move(walker, walker). % original: moves when it hears a shoot, or you enter its cave
@@ -1605,7 +1627,8 @@ all_squares(AllSqrs) :-
 
 all_squares_type(dodeca, 20, [[1,1],[2,2],[3,3],[4,3],[5,2],[6,3],[7,3],[8,2],[9,3],[10,3],[11,4],[12,4],[13,5],[14,4],[15,4],[16,5],[17,4],[18,4],[19,5],[20,6]]).
 
-all_squares_type(grid, Extent, AllSqrs) :-
+all_squares_type(Type, Extent, AllSqrs) :-
+    (Type == grid ; Type == fig62),
     all_squares_1(Extent,1,1,AllSqrs).
 
 all_squares_1(Extent,Extent,Extent,[[Extent,Extent]]).
