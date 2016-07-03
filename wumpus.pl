@@ -365,7 +365,8 @@ initialize_agent :-
 initialize_agent_advanced :-
     get_setup(L),   % [Size, Type, Move, Gold, Pit, Bat, Adv], Adv=[RandS, RandA]
     L=[Size, Type, _Move, _Gold, _Pit, _Bat, Adv], % [Ax, Ay]],
-    initialize_agent_location(Size, Type, Adv).
+    initialize_agent_location(Size, Type, Adv),
+    initialize_agent_orientation(Adv).
 
 initialize_agent_location(S, T, [yes|_]) :- % RandS = yes, random agent start location
     !,
@@ -388,6 +389,14 @@ initialize_agent_location(_, _, [no|_]) :- % RandS = no, agent at [1,1]
 
 initialize_agent_location(_, _, [_]) :- % RandS = no, agent at [1,1]
     writeln('Bug L391, take a look at check_setup').
+
+initialize_agent_orientation([_, yes|_]) :-
+    retractall(agent_orientation(_)),
+    random(0, 4, Ai),
+    A is Ai * 90,
+    assert(agent_orientation(A)).
+
+initialize_agent_orientation(_).
 
 gold_squares(E, T, GS) :- % not used by fig62
     all_squares_type(T, E, All),
@@ -589,7 +598,7 @@ goforward(no) :-
     retract(agent_location(X,Y)),   % update location
     assert(agent_location(X1,Y1)).  % if it has bats, it will update again
 
-goforward(yes).     % Ran into wall, Bump = yes
+goforward(yes) :-     % Ran into wall, Bump = yes
     format("Not possible! Bumped a wall!", []).
 
 % agent will bump if he walks
@@ -975,19 +984,22 @@ assert_setup :-
     world_setup(Lin), % user definition
     check_setup(Lin, Lout),
     !,
-    format("User defined setup: Size=~w, Type=~w, Move=~w, Gold=~w, Pit=~w, Bat=~w, Adv=~w~n", Lout),
+    format('User defined setup: Size=~w, Type=~w, Move=~w, Gold=~w, Pit=~w, Bat=~w, Adv=~w~n', Lout),
     retractall(get_setup(_)),
     assert(get_setup(Lout)).
 
 assert_setup :-
     current_predicate(get_setup, get_setup(_)), % case manual_setup asserted
     get_setup(Lout),
+    writeln('Debug'),
+    writeln(Lout),
     !,
-    format("Reusing setup: Size=~w, Type=~w, Move=~w, Gold=~w, Pit=~w, Bat=~w, Adv=~w~n", Lout).
+    format('Reusing setup: Size=~w, Type=~w, Move=~w, Gold=~w, Pit=~w, Bat=~w, Adv=~i~n', Lout),
+    writeln('foi').
 
 assert_setup :-
     Lout=[4, grid, stander, 0.1, 0.2, 0.1, [no, no]], % defaulf
-    format("Default setup: Size=~w, Type=~w, Move=~w, Gold=~w, Pit=~w, Bat=~w, Adv=~w~n", Lout),
+    format('Default setup: Size=~w, Type=~w, Move=~w, Gold=~w, Pit=~w, Bat=~w, Adv=~w~n', Lout),
     retractall(get_setup(_)),
     assert(get_setup(Lout)). % default
 
