@@ -1002,7 +1002,7 @@ check_setup([Size, Type, Move, Gold, Pit, Bat | TAdv], [S1, T1, M1, G1, P1, B1, 
 % Size 4, wumpus stander, 1 gold, 3 pits, no bats, and agent_location may be random or not
 check_setup_basic([_, fig62, Move, _, _, _], [4, fig62, M1, 1, 3, 0]) :- 
     !,
-    check_setup_move(Move, M1).  % Check: TODO fig62 accept Move
+    check_setup_move(Move, M1).
 
 % grid and dodeca
 
