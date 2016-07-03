@@ -292,15 +292,14 @@ run_agent_action(Percept) :-
 %   agent and returns the Percept from square 1,1.
 %   Percept = [Stench,Breeze,Glitter,Bump,Scream,Rustle]
 
-initialize([Stench, Breeze, Glitter, no, no, Rustle]) :-
+initialize([Stench, Breeze, Glitter, Bump, no, Rustle]) :-
     initialize_world,
     initialize_agent,
     stench(Stench),        % #1 stench(Stench) Wumpus may be nearby (no Wumpus on [1,1])
     breeze(Breeze),        % #2 no pit on [1,1] and grid: [1,2],[2,1] or dodeca: [2,2],[5,2],[8,2]
     glitter(Glitter),      % #3 no gold on [1,1]
+    will_bump(Bump),       % #4 check if agent is facing a wall at start
     rustle(Rustle).        % #6 no bat on [1,1], and grid: [1,2],[2,1] or dodeca: [2,2],[5,2],[8,2]
-    % goforward(Bump),     % #4 not needed here, just for documentation (TODO: starting facing wall bump yes)
-    % shoot_arrow(Scream), % #5 not needed here, just for documentation
 
 % initialize_world: gather information
 initialize_world :-
@@ -591,7 +590,16 @@ goforward(no) :-
     assert(agent_location(X1,Y1)).  % if it has bats, it will update again
 
 goforward(yes).     % Ran into wall, Bump = yes
-    %    format("Not possible! Bumped a wall!", []).
+    format("Not possible! Bumped a wall!", []).
+
+% agent will bump if he walks
+will_bump(yes) :-
+    agent_orientation(A),
+    agent_location(X, Y),
+    facing_wall(X, Y, A), !.
+
+will_bump(no).
+
 
 % rustle(Rustle): Rustle = yes if bats are nearby (adjacent)
 % Rustle = no if no bats or
