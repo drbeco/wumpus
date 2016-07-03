@@ -49,13 +49,16 @@
 %
 % World Setup:
 %
-% world_setup([Size, Type, Move, Gold, Pit, Bat]).
+% world_setup([Size, Type, Move, Gold, Pit, Bat, [RandS, RandA]]).
 % 1. Size: 2..20, with some constrictions: [2-9] grid; 20, dodeca; 4, fig62
 % 2. Type: fig62, grid or dodeca
 % 3. Move: walker, runner, wanderer, spinner, hoarder, spelunker, stander, trapper and bulldozer
 % 4. Gold: Integer is deterministic number, float from 0.0<G<1.0 is probabilistic
 % 5. Pits: Idem, 0 is no pits.
 % 6. Bats: Idem, 0 is no bats.
+% Optional, advanced setup:
+%   7. RandS: yes/no, random agent start position
+%   8. RandA: yes/no, random agent start angle (not implemented)
 %
 % fig62:
 %   gold: [2,3]
@@ -63,7 +66,7 @@
 %   wumpus: [1,3], fixed location (stander)
 %
 % grid:
-%   size: from 2 to 9
+%   size: from 2 to 9; 0 = random size
 %   gold: free to choose from 1 to NxN-1, not in [1,1]
 %   pits: any number, random location, not in [1,1], [2,1] and [1,2]
 %   wumpus: only one, random location, not in [1,1]
@@ -72,12 +75,12 @@
 %   size: 20
 %   gold: random quantity not in [1,1]
 %   pits: random quantity not in [1,1], [2,1] and [1,2]
-%   wumpus: only one, random fixed location, not in [1,1]
+%   wumpus: only one, not in [1,1]
 %
 % External:
 %   init_agent.
 %   run_agent(Perception, Action).
-%   world_setup([Size, Type, Move, Golds, Pits, Bats]).
+%   world_setup([Size, Type, Move, Golds, Pits, Bats, [RandS, RandA]]).
 %   Types of Wumpus Movement
 %       walker    : original: moves when it hears a shoot, or you enter its cave
 %       runner    : go forward and turn left or right on bumps, maybe on pits
@@ -159,12 +162,12 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Run by hand
 %
-%L=[Size, Type, Move, Gold, Pit, Bat, Adv], Adv=[Rand]
-%L=[4, grid, stander, 0.1, 0.2, 0.1, [no]] % default
+%L=[Size, Type, Move, Gold, Pit, Bat, [RandS, RandA]]
+%L=[4, grid, stander, 0.1, 0.2, 0.1, [no, no]] % default
 manual_setup(L0) :-
     check_setup(L0, L1),
     retractall(get_setup(_)),
-    assert(get_setup(L1)), % [random, grid, 4, stander, 64, 1, 0.1, 0.2, no])), % default definition
+    assert(get_setup(L1)),
     !.
 
 manual_init :-
@@ -296,15 +299,15 @@ initialize([Stench, Breeze, Glitter, no, no, Rustle]) :-
     breeze(Breeze),        % #2 no pit on [1,1] and grid: [1,2],[2,1] or dodeca: [2,2],[5,2],[8,2]
     glitter(Glitter),      % #3 no gold on [1,1]
     rustle(Rustle).        % #6 no bat on [1,1], and grid: [1,2],[2,1] or dodeca: [2,2],[5,2],[8,2]
-    % goforward(Bump),     % #4 not needed here, just for documentation
+    % goforward(Bump),     % #4 not needed here, just for documentation (TODO: starting facing wall bump yes)
     % shoot_arrow(Scream), % #5 not needed here, just for documentation
 
 % initialize_world: gather information
 initialize_world :-
     ww_retract_all, % retract ww list (wumpus, gold, pit and bat, and all initial state variables)
     assert_setup,   % assert user or default setup
-    get_setup(L),   % L=[Size, Type, Move, Gold, Pit, Bat, Adv], Adv=[Rand]
-    L=[Size, _, Move, Gold, Pit, Bat|_],
+    get_setup(L),   % L=[Size, Type, Move, Gold, Pit, Bat, Adv], Adv=[RandS, RandA]
+    L=[Size, _Type, Move, Gold, Pit, Bat|_],
     ww_addto_init_state(world_extent(Size)),
     random(0, 4, WAngN),
     WAng is WAngN * 90,
@@ -361,28 +364,31 @@ initialize_agent :-
     initialize_agent_advanced.
 
 initialize_agent_advanced :-
-    get_setup(L),   % [Size, Type, Move, Gold, Pit, Bat, [Ax, Ay]],
+    get_setup(L),   % [Size, Type, Move, Gold, Pit, Bat, Adv], Adv=[RandS, RandA]
     L=[Size, Type, _Move, _Gold, _Pit, _Bat, Adv], % [Ax, Ay]],
     initialize_agent_location(Size, Type, Adv).
 
-initialize_agent_location(S, T, [yes|_]) :- % Rand = yes, random agent location
+initialize_agent_location(S, T, [yes|_]) :- % RandS = yes, random agent start location
     !,
     all_squares_type(T, S, All),
-    findall([Xb, Yb], bat(Xb, Yb), AllBats), % find all bats
-    findall([Xp, Yp], pit(Xp, Yp), AllPits), % find all pits
-    findall([Xg, Yg], gold(Xg, Yg), AllGolds), % find all golds
-    wumpus_location(Wx, Wy),
-    subtract(All, AllBats, AllButBats),
-    subtract(AllButBats, AllPits, AllBBPits),
-    subtract(AllBBPits, AllGolds, AllBBPGolds),
-    delete(AllBBPGolds, [Wx, Wy], AllButs),
-    random_member([Ax, Ay], AllButs),
+    findall([Xb, Yb], bat(Xb, Yb), AllBats),    % find all bats
+    findall([Xp, Yp], pit(Xp, Yp), AllPits),    % find all pits
+    findall([Xg, Yg], gold(Xg, Yg), AllGolds),  % find all golds
+    wumpus_location(Wx, Wy),                    % find Wumpus
+    subtract(All, AllBats, AllButBats),         % All but bats
+    subtract(AllButBats, AllPits, AllBBPits),   % All but bats and pits
+    subtract(AllBBPits, AllGolds, AllBBPGolds), % All but bats, pits and golds
+    delete(AllBBPGolds, [Wx, Wy], AllButs),     % All but bats, pits, golds and Wumpus
+    random_member([Ax, Ay], AllButs),           % Pick one
     retractall(agent_location(_,_)),
     assert(agent_location(Ax, Ay)).
 
-initialize_agent_location(_, _, [no|_]) :- % Rand = no, agent at [1,1]
+initialize_agent_location(_, _, [no|_]) :- % RandS = no, agent at [1,1]
     retractall(agent_location(_,_)),
-    assert(agent_location(1, 1)).
+    assert(agent_location(1, 1)), !.
+
+initialize_agent_location(_, _, [_]) :- % RandS = no, agent at [1,1]
+    writeln('Bug L391, take a look at check_setup').
 
 gold_squares(E, T, GS) :- % not used by fig62
     all_squares_type(T, E, All),
@@ -928,31 +934,34 @@ check_agent_action_which(_) :- format("Agent gave unknow action!~n"), !, fail.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % check_setup : check for user definition, or use default values
-% 
-% world_setup
+%
+% world_setup [Size, Type, Move, Gold, Pit, Bat, [RandS, RandA]] 
 %    1.  Size: 2..20, with some constrictions: [2-9] grid; 20, dodeca; 4, fig62. Zero for random size.
 %    2.  Type: fig62, grid or dodeca
 %    3.  Move: walker, runner, wanderer, spinner, hoarder, spelunker, stander, trapper, bulldozer
 %    4.  Gold: Integer is deterministic number, float from 0.0<G<1.0 is probabilistic
 %    5.  Pits: Idem, 0 is no pits.
 %    6.  Bats: Idem, 0 is no bats.
-%    7.  Advanced list: list with advanced setup options
-%           - Rand: yes/no, random agent start location
-%           - other items reserved for future use
+%    Optional Advanced list: list with advanced setup
+%           7. RandS: yes/no, random agent start location
+%           8. RandA: yes/no, random agent angle
+%           9. Other items reserved for future use
 %
 %   L = [Size, Type, Move, Gold, Pit, Bat, Adv]
-%   Adv = [Rand|_]
+%   Adv = [RandS, RandA|_]
 %
 % examples:
+% world_setup([5, grid, stander, 1, 3, 1). % size 5, 1 gold, 3 pits and 1 bat
 % world_setup([5, grid, stander, 1, 3, 1, []]). % size 5, 1 gold, 3 pits and 1 bat
-% world_setup([4, grid, stander, 0.1, 0.2, 0.1])). % default
+% world_setup([4, grid, stander, 0.1, 0.2, 0.1, [no, no]]). % default
+% world_setup([4, grid, stander, 0.1, 0.2, 0.1, [yes, no]]).
 % world_setup([0, grid, stander, 0.1, 0.1, 0.1, [yes]]):
 %   - random size, random golds, pits and bats
 %   - grid, wumpus movement 'walker'
-%   - [yes]: random agent start location
+%   - [yes]: RandS, random agent start location
 %
 
-%get_setup([Size, Type, Move, Gold, Pit, Bat, [Rand]])
+%get_setup([Size, Type, Move, Gold, Pit, Bat, [RandS, RandA]])
 assert_setup :-
     current_predicate(world_setup, world_setup(_)),
     world_setup(Lin), % user definition
@@ -969,7 +978,7 @@ assert_setup :-
     format("Reusing setup: Size=~w, Type=~w, Move=~w, Gold=~w, Pit=~w, Bat=~w, Adv=~w~n", Lout).
 
 assert_setup :-
-    Lout=[4, grid, stander, 0.1, 0.2, 0.1, [no]], % defaulf
+    Lout=[4, grid, stander, 0.1, 0.2, 0.1, [no, no]], % defaulf
     format("Default setup: Size=~w, Type=~w, Move=~w, Gold=~w, Pit=~w, Bat=~w, Adv=~w~n", Lout),
     retractall(get_setup(_)),
     assert(get_setup(Lout)). % default
@@ -977,23 +986,39 @@ assert_setup :-
 % correcting wrong combinations
 % [Size, Type, Move, Gold, Pit, Bat, [Adv]]
 
+check_setup([Size, Type, Move, Gold, Pit, Bat | TAdv], [S1, T1, M1, G1, P1, B1, A1]) :-
+    check_setup_basic([Size, Type, Move, Gold, Pit, Bat], [S1, T1, M1, G1, P1, B1]),
+    check_setup_advanced(TAdv, A1).
+
 % fig62
 % Size 4, wumpus stander, 1 gold, 3 pits, no bats, and agent_location may be random or not
-check_setup([_, fig62, _, _, _, _, Adv], [4, fig62, stander, 1, 3, 0, Adv]) :- !.
+check_setup_basic([_, fig62, Move, _, _, _], [4, fig62, M1, 1, 3, 0]) :- 
+    !,
+    check_setup_move(Move, M1).  % Check: TODO fig62 accept Move
 
 % grid and dodeca
-check_setup([Size, Type, Move, Gold, Pit, Bat, Adv], [S1, T1, M1, G1, P1, B1, A1]) :-
+
+check_setup_basic([Size, Type, Move, Gold, Pit, Bat], [S1, T1, M1, G1, P1, B1]) :-
     check_setup_type(Type, T1),
     check_setup_size(T1, Size, S1), !, % ! fix alternatives (debug A:alternatives)
     check_setup_move(Move, M1),
     check_setup_gold_type(Gold, S1, G1, T1),
     check_setup_hazard_type(Pit, S1, P1, T1), % Qtd pits, size, Qtd Pits validated
-    check_setup_hazard_type(Bat, S1, B1, T1),
-    check_setup_advanced(Adv, A1).
+    check_setup_hazard_type(Bat, S1, B1, T1).
 
 % Check advanced list
-check_setup_advanced([yes], [yes]).
-check_setup_advanced(_, [no]).
+
+check_setup_advanced([], [no, no]).
+
+check_setup_advanced([Adv], A1) :-
+    check_setup_advanced_rands(Adv, Rs), % agent random start location
+    check_setup_advanced_randa(Adv, Ra), % agent random start angle of orientation
+    A1 = [Rs, Ra].
+
+check_setup_advanced_rands([yes|_], yes).
+check_setup_advanced_rands(_, no).
+check_setup_advanced_randa([_, yes|_], yes).
+check_setup_advanced_randa(_, no).
 
 % Check map type
 check_setup_type(grid, grid).
