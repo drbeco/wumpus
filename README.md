@@ -21,11 +21,11 @@ Based on:
 
 Special thanks to:
 
-- Larry Holder (holder@cse.uta.edu) (version 1.0 and version 2.3)
+- Larry Holder (holder@wsu.edu) (version 1.0 and version 2.3)
 - Walter Nauber (walter.nauber@tu-dresden.de) (swi-prolog version)
 
-A very special thanks to Gregory Yob (in memoriam) and beloved wife
-kind enough to answer my call and share with me a picture to upload 
+A very special thanks to Gregory Yob (in memoriam) and beloved wife,
+who was kind enough to answer my call and share with me a picture to upload 
 to his wikipedia page:
 
 https://en.wikipedia.org/wiki/Gregory_Yob
@@ -77,4 +77,5 @@ Headstrong: just go forward, stubborn as a mule, stiff-necked.
 * http://www.trs-80.org/hunt-the-wumpus/
 * https://www.practicingruby.com/articles/wumpus
 * A C code simulating BASIC code for the original Wumpus: https://www.daniweb.com/programming/computer-science/threads/424300/wumpus-recoded-in-c
+* Larry Holder's dedicated web page: http://www.eecs.wsu.edu/~holder/courses/AI/wumpus/
 
