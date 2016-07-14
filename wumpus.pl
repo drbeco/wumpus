@@ -599,7 +599,7 @@ goforward(no) :-
     assert(agent_location(X1,Y1)).  % if it has bats, it will update again
 
 goforward(yes) :-     % Ran into wall, Bump = yes
-    format("Not possible! Bumped a wall!", []).
+    format("Not possible! Bumped a wall!~n", []).
 
 % agent will bump if he walks
 will_bump(yes) :-
