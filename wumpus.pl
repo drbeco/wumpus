@@ -104,9 +104,9 @@
 %               - A float number from 0.0 < P < 1.0 sets the probability.
 %
 % Score:
-%   * +1000 points for each gold AFTER climbing alive
-%   * +500 points for killing the Wumpus
-%   * -500 for dying (1. eaten alive by wumpus, 2. falling into a pit, 3. walking until exhausted)
+%   * +500 points for each gold AFTER climbing alive
+%   * +1000 points for killing the Wumpus
+%   * -1000 for dying (1. eaten alive by wumpus, 2. falling into a pit, 3. walking until exhausted)
 %   * -1 for action (sit, turnright, turnleft, goforward, grab, shoot, climb)
 %
 
@@ -454,7 +454,7 @@ dodeca_map([
 %   4. grab:      pickup gold if in square
 %   5. shoot:     shoot an arrow along orientation, killing wumpus if
 %                 in that direction
-%   6. climb:     if in square 1,1, leaves the cave and adds 1000 points
+%   6. climb:     if in square 1,1, leaves the cave and adds 500 points
 %                 for each piece of gold
 %   7. sit:       do nothing, costs one action and -1 score
 %
@@ -529,7 +529,7 @@ execute(climb,[no,no,no,no,no,no]) :-
     decrement_score,
     agent_gold(G),
     retract(agent_score(S)),
-    S1 is (S + (1000 * G)),
+    S1 is (S + (500 * G)),
     assert(agent_score(S1)),
     retract(agent_in_cave(yes)),
     assert(agent_in_cave(no)),
@@ -673,7 +673,7 @@ update_agent_health :-
     retract(agent_health(alive)),
     assert(agent_health(dead)),
     retract(agent_score(S)),
-    S1 is S - 500,
+    S1 is S - 1000,
     assert(agent_score(S1)),
     format("... Oops! You are Wumpus food!~n",[]).
 
@@ -684,7 +684,7 @@ update_agent_health :-
     retract(agent_health(alive)),
     assert(agent_health(dead)),
     retract(agent_score(S)),
-    S1 is S - 500,
+    S1 is S - 1000,
     assert(agent_score(S1)),
     format("Yyiiiieeee... Fell in pit!~n",[]).
 
@@ -696,7 +696,7 @@ update_agent_health :-
     retract(agent_health(alive)),
     assert(agent_health(dead)),
     retract(agent_score(S)),
-    S1 is S - 500,
+    S1 is S - 1000,
     assert(agent_score(S1)),
     format("You've starved to death inside this faultfinding cave!~n",[]).
 
@@ -1658,7 +1658,7 @@ kill_wumpus :-
     retract(wumpus_health(alive)),
     assert(wumpus_health(dead)),
     retract(agent_score(S)),
-    S1 is S + 500, % 500 point for killing the wumpus
+    S1 is S + 1000, % 1000 point for killing the wumpus
     assert(agent_score(S1)).
 
 % all_squares(AllSqrs): AllSqrs is the list of all possible
