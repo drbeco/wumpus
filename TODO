@@ -3,8 +3,10 @@
 Priority:
 
 * find the arrow near the wall it hit
-* nearest_orientation : 
-    - random when tied? (avoid [1,1] corner)
+* nearest_orientation : (avoid [1,1] corner)
+    - The way it is now, it works, avoid [1,1]
+    - random when tied? 
+        * if random, choose only once!
     - near is the Angle I'm looking at already
 
 * [almost] wumpus original messages
