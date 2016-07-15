@@ -91,7 +91,7 @@
 %       walker    : original: moves when it hears a shoot, or you enter its cave
 %       runner    : go forward and turn left or right on bumps, maybe on pits
 %       wanderer  : arbitrarily choses an action from [sit,turnleft,turnright,goforward]
-%       spinner   : goforward, turnleft, repeat.
+%       spinner   : goforward, turnright, repeat.
 %       hoarder   : go to one of the golds and sit
 %       spelunker : go to a pit and sit
 %       stander   : do not move (default)
