@@ -63,9 +63,9 @@
 %
 % Custos:
 % Andar/Girar/Pegar/Sair/Atirar/Sentar: -1
-% Morrer: -500 (buraco, wumpus ou fadiga)
-% Matar Wumpus: +500
-% Sair com ouro: +1000 para cada pepita
+% Morrer: -1000 (buraco, wumpus ou fadiga)
+% Matar Wumpus: +1000
+% Sair com ouro: +500 para cada pepita
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 %
@@ -73,9 +73,7 @@
 % swipl -s agente004.pl
 % e faca a consulta (query) na forma:
 % ?- start.
-
-:- use_module(wumpus, [start/0]). % agente usa modulo simulador
-
+%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % world_setup([Size, Type, Move, Gold, Pit, Bat, Adv])
 %
