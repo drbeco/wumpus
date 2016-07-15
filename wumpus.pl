@@ -1444,9 +1444,12 @@ move_dodeca_adjacent(X1, Xadj, X2) :-
 % nearest_orientation(Angle,Orient):  Orient is the nearest orientation
 %   (0, 90, 180, 270) to angle (in degrees), where 0 <= A < 360.
 
-nearest_orientation(A, 0) :- (A =< 45 ; A > 315 ), !.
-nearest_orientation(A, 90) :- A > 45, A =< 135, !.
-nearest_orientation(A, 180) :- A > 135, A =< 225, !.
+nearest_orientation(A, 0) :- (A < 45 ; A > 315 ), !.
+nearest_orientation(45, O) :- random_member([0, 90], O), !.
+nearest_orientation(A, 90) :- A > 45, A < 135, !.
+nearest_orientation(135, O) :- random_member([90, 180], O), !.
+nearest_orientation(A, 180) :- A > 135, A < 225, !.
+nearest_orientation(225, O) :- random_member([180, 270], O), !.
 nearest_orientation(_, 270).
 
 % direction_action(Orient1,Orient2,Action): Action = goforward if
