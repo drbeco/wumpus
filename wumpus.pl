@@ -85,7 +85,7 @@
 %       walker    : original: moves when it hears a shoot, or you enter its cave
 %       runner    : go forward and turn left or right on bumps, maybe on pits
 %       wanderer  : arbitrarily choses an action from [sit,turnleft,turnright,goforward]
-%       spinner   : goforward, turnleft, repeat.
+%       spinner   : goforward, turnright, repeat.
 %       hoarder   : go to one of the golds and sit
 %       spelunker : go to a pit and sit
 %       stander   : do not move (default)
@@ -1056,7 +1056,7 @@ check_setup_size(dodeca, _, 20).
 check_setup_move(walker, walker). % original: moves when it hears a shoot, or you enter its cave
 check_setup_move(runner, runner). % go forward and turn left or right on bumps, maybe on pits
 check_setup_move(wanderer, wanderer). % arbitrarily choses an action from [sil,turnleft,turnright,goforward]
-check_setup_move(spinner, spinner). % goforward, turnleft, repeat.
+check_setup_move(spinner, spinner). % goforward, turnright, repeat.
 check_setup_move(hoarder, hoarder). % go to one of the golds and sit
 check_setup_move(spelunker, spelunker). % go to a pit and sit
 check_setup_move(trapper, trapper). % hunt the agent from distance
@@ -1109,7 +1109,7 @@ check_setup_prob(P) :- P>0.0, P<1.0.  % Probability 0.0<P<1.0
 % walker    % original: moves when it hears a shoot, or you enter its cave
 % runner    % go forward and turn left or right on bumps, maybe on pits
 % wanderer  % arbitrarily choses an action from [sit,turnleft,turnright,goforward]
-% spinner   % goforward, turnleft, repeat.
+% spinner   % goforward, turnright, repeat.
 % hoarder   % go to one of the golds and sit
 % spelunker % go to a pit and sit
 % stander   % do not move (default)
