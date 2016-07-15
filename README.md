@@ -32,7 +32,7 @@ https://en.wikipedia.org/wiki/Gregory_Yob
 
 ## Agents
 
-### Agent 001
+### Agent 001 and 005
 
 Strategy: 
 
@@ -48,15 +48,20 @@ Strategy:
         + explore new squares
         + no new squares, explore random old squares
 
+Note:
+
+    - Agent 001 is for fixed start position of the agent at [1,1]
+    - Agent 005 is for random agent start position
+
 ### Agent 002
 
 Strategy:
 
 A prefixed list of actions fine-tuned for the fixed map _Fig 62_. The list have the actions that will run in order:
 
-    - lacoes([goforward,turnleft,goforward,goforward,turnleft,shoot,grab,turnleft,goforward,goforward,         turnright,goforward,climb]).
+    - lacoes([goforward,turnleft,goforward,goforward,turnleft,shoot,grab,turnleft,goforward,goforward,turnright,goforward,climb]).
 
-### Agent 003
+### Agent 004
 
 Strategy:
 
