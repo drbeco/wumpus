@@ -15,43 +15,26 @@
 %    with this program; if not, write to the Free Software Foundation, Inc.,    %
 %    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.                %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Hunt The Wumpus - World Simulator
-%
-%   Edited, Compiled, Modified by:
-%   Author: 
-%     - Ruben Carlo Benante (rcb@beco.cc)
-%   Copyright: 2012 - 2016
-%   License: GNU GPL Version 2.0
-%
 %   Special thanks to:
-%     - Original by Gregory Yob (1972)
-%     - Larry Holder (accessed version Oct/2005)
-%     - Walter Nauber 09/02/2001
-%     - An Anonymous version of Hunt The Wumpus with menus (aeric? 2012?)
+%     - Gregory Yob
+%     - Larry Holder 
+%     - Walter Nauber
 %
-% A Prolog implementation of the Wumpus world invented by Gregory Yob
+% A Prolog implementation of the Wumpus world invented by Gregory Yob (1972)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-% Strategy: runs a prefixed set of actions from a list
-% Performance: 
-%   - perfect for fig62
-%   - does not so well in any other case
-%
-% To define an agent within the navigate.pl scenario, define:
-%   init_agent
-%   run_agent
-%   world_setup([Size, Type, Move, Gold, Pit, Bat, [RandS, RandA]])
-%
-%       +--------+-----------+
-%       |  Type  |    Size   |
-%       +--------+-----------+
-%       | fig62  | 4 (fixed) |
-%       | grid   | 2 ... 9   |
-%       | dodeca | 20 (fixed)|
-%       +--------+-----------+
-%
+% To allow an agent to run with the Wumpus Simulator you need to define:
+%   init_agent : 
+%       It will be called only once, at the start. Put here definitions and
+%       other start code you need (asserts, retracts, and so on)
+%   run_agent :
+%       It will be called each turn by the simulator.
+%       Input: perceptions from the world.
+%       Expected output: an action for the agent to perform.
+%   world_setup([Size, Type, Move, Gold, Pit, Bat, [RandS, RandA]]):
+%       This is a fact. It will be consulted only once at the beginning,
+%       even before init_agent. It will configure the world as you say,
+%       or use a default in case of conflicts or mistakes.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
 % Lista de Percepcao: [Stench, Breeze, Glitter, Bump, Scream, Rustle]
 % Traducao: [Fedor, Vento, Brilho, Trombada, Grito, Ruido]
 % Acoes possiveis (abreviacoes):
@@ -63,24 +46,29 @@
 % shoot (sh)                    - atirar a flecha
 % sit (si)                      - sentar (nao faz nada, passa a vez)
 %
-% Custos:
-% Andar/Girar/Pegar/Sair/Atirar/Sentar: -1
-% Morrer: -1000 (buraco, wumpus ou fadiga)
-% Matar Wumpus: +1000
-% Sair com ouro: +500 para cada pepita
+% Costs (Custos):
+% Actions: -1 (Andar/Girar/Pegar/Sair/Atirar/Sentar)
+% Die: -1000 (morrer no buraco, wumpus ou de fadiga)
+% Killing the Wumpus: +1000 (matar Wumpus)
+% Climbing alive with golds: +500 for each gold (sair com ouro)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-% Para rodar o exemplo, inicie o prolog com:
-% $ swipl -s agente002.pl
-% e faca a consulta (query) na forma:
+% To run the example, start PROLOG with (rode o exemplo iniciando o prolog com):
+% swipl -s agenteXXX.pl
+% then do the query (faca a consulta):
 % ?- start.
-%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % world_setup([Size, Type, Move, Gold, Pit, Bat, Adv])
 %
 % Size and Type: - fig62, 4
 %                - grid, [2-9] (default 4)
 %                - dodeca, 20
+%       +--------+-----------+
+%       |  Type  |    Size   |
+%       +--------+-----------+
+%       | fig62  | 4 (fixed) |
+%       | grid   | 2 ... 9   |
+%       | dodeca | 20 (fixed)|
+%       +--------+-----------+
 %
 % Configuration:
 %    1.   Size: 0,2..9,20, where: grid is [2-9] or 0 for random, dodeca is 20, fig62 is 4.
@@ -94,8 +82,10 @@
 %       - RandA - yes or no, random agent start angle of orientation
 %
 % examples: 
-% world_setup([4, grid, stander, 0.1, 0.2, 0.1, [no, no]]). % default
-% world_setup([5, grid, stander, 1, 3, 0.1, [yes]]). % size 5, 1 gold, 3 pits, some bats prob. 0.1, agent randomly positioned
+% * default:
+%      world_setup([4, grid, stander, 0.1, 0.2, 0.1, [no, no]]).
+% * size 5, 1 gold, 3 pits, some bats prob. 0.1, agent randomly positioned
+%      world_setup([5, grid, stander, 1, 3, 0.1, [yes]]). 
 %
 %   Types of Wumpus Movement
 %       walker    : original: moves when it hears a shoot, or you enter its cave
@@ -107,7 +97,13 @@
 %       stander   : do not move (default)
 %       trapper   : goes hunting agent as soon as it leaves [1,1]; goes home otherwise
 %       bulldozer : hunt the agent as soon as it smells him
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% agente002.pl:
 %
+% Strategy: runs a prefixed set of actions from a list
+% Performance: 
+%   - perfect for fig62
+%   - does not so well in any other case
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 :- use_module(wumpus, [start/0]). % agente usa modulo simulador
