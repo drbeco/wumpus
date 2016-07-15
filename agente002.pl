@@ -4,8 +4,7 @@
 %                                                                               %
 %    This program is free software; you can redistribute it and/or modify       %
 %    it under the terms of the GNU General Public License as published by       %
-%    the Free Software Foundation; either version 2 of the License, or          %
-%    (at your option) any later version.                                        %
+%    the Free Software Foundation; version 2 of the License.                    %
 %                                                                               %
 %    This program is distributed in the hope that it will be useful,            %
 %    but WITHOUT ANY WARRANTY; without even the implied warranty of             %
@@ -24,34 +23,107 @@
 %   Copyright: 2012 - 2016
 %   License: GNU GPL Version 2.0
 %
-%   Based on:
+%   Special thanks to:
 %     - Original by Gregory Yob (1972)
 %     - Larry Holder (accessed version Oct/2005)
 %     - Walter Nauber 09/02/2001
 %     - An Anonymous version of Hunt The Wumpus with menus (aeric? 2012?)
 %
-%   Special thanks to:
-%     - Larry Holder (holder@cse.uta.edu) (version 1.0 and version 2.3)
-%     - Walter Nauber (walter.nauber@tu-dresden.de) (swi-prolog version)
-%
-% A Prolog implementation of the Wumpus world described in Russell and
-% Norvig's "Artificial Intelligence: A Modern Approach", Section 6.2.
+% A Prolog implementation of the Wumpus world invented by Gregory Yob
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 % Strategy: runs a prefixed set of actions from a list
 % Performance: 
 %   - perfect for fig62
 %   - does not so well in any other case
-
-%:- load_files([wumpus]).
+%
+% To define an agent within the navigate.pl scenario, define:
+%   init_agent
+%   run_agent
+%   world_setup([Size, Type, Move, Gold, Pit, Bat, [RandS, RandA]])
+%
+%       +--------+-----------+
+%       |  Type  |    Size   |
+%       +--------+-----------+
+%       | fig62  | 4 (fixed) |
+%       | grid   | 2 ... 9   |
+%       | dodeca | 20 (fixed)|
+%       +--------+-----------+
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Lista de Percepcao: [Stench, Breeze, Glitter, Bump, Scream, Rustle]
+% Traducao: [Fedor, Vento, Brilho, Trombada, Grito, Ruido]
+% Acoes possiveis (abreviacoes):
+% goforward (go)                - andar
+% turnright (turn, turnr ou tr) - girar sentido horario
+% turnleft (turnl ou tl)        - girar sentido anti-horario
+% grab (gr)                     - pegar o ouro
+% climb (cl)                    - sair da caverna
+% shoot (sh)                    - atirar a flecha
+% sit (si)                      - sentar (nao faz nada, passa a vez)
+%
+% Custos:
+% Andar/Girar/Pegar/Sair/Atirar/Sentar: -1
+% Morrer: -1000 (buraco, wumpus ou fadiga)
+% Matar Wumpus: +1000
+% Sair com ouro: +500 para cada pepita
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Para rodar o exemplo, inicie o prolog com:
+% $ swipl -s agente002.pl
+% e faca a consulta (query) na forma:
+% ?- start.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% world_setup([Size, Type, Move, Gold, Pit, Bat, Adv])
+%
+% Size and Type: - fig62, 4
+%                - grid, [2-9] (default 4)
+%                - dodeca, 20
+%
+% Configuration:
+%    1.   Size: 0,2..9,20, where: grid is [2-9] or 0 for random, dodeca is 20, fig62 is 4.
+%    2.   Type: fig62, grid or dodeca
+%    3.   Move: stander, walker, runner (wumpus movement)
+%    4.   Gold: Integer is deterministic number, float from 0.0<G<1.0 is probabilistic
+%    5.   Pits: Idem, 0 is no pits.
+%    6.   Bats: Idem, 0 is no bats.
+%    7.   Adv: a list with advanced configuration in the form [RandS, RandA]:
+%       - RandS - yes or no, random agent start position
+%       - RandA - yes or no, random agent start angle of orientation
+%
+% examples: 
+% world_setup([4, grid, stander, 0.1, 0.2, 0.1, [no, no]]). % default
+% world_setup([5, grid, stander, 1, 3, 0.1, [yes]]). % size 5, 1 gold, 3 pits, some bats prob. 0.1, agent randomly positioned
+%
+%   Types of Wumpus Movement
+%       walker    : original: moves when it hears a shoot, or you enter its cave
+%       runner    : go forward and turn left or right on bumps, maybe on pits
+%       wanderer  : arbitrarily choses an action from [sit,turnleft,turnright,goforward]
+%       spinner   : goforward, turnleft, repeat.
+%       hoarder   : go to one of the golds and sit
+%       spelunker : go to a pit and sit
+%       stander   : do not move (default)
+%       trapper   : goes hunting agent as soon as it leaves [1,1]; goes home otherwise
+%       bulldozer : hunt the agent as soon as it smells him
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 :- use_module(wumpus, [start/0]). % agente usa modulo simulador
 
+% Mundo: 
+%    famosa figura da seção 6.2 do livro "Inteligencia Artificial: uma abordagem moderna", de Russel & Norvig.
+%    4x4, quadrado, wumpus fica parado em [1,3]
+%    1 ouro (em [2,3]), 3 buracos (em [3,1], [3,3] e [4,4]), 0 morcegos
+%    agente inicia na casa [1,1] olhando para leste/direita (0 graus)
+%    Maximo de acoes antes de morrer de fome: Size^2x4 = 4x4x4 = 64
+world_setup([4, fig62, stander, 1, 3, 0, [no]]). % size 4, 1 gold, 3 pits and 0 bat
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Inicie aqui seu programa.
+
 :- dynamic([lacoes/1]).
-
-
-%old: wumpusworld(pit3, 4). %type: fig62, size 4; random, size 2-9; pit3, size: 3-9
-world_setup([4, fig62, stander, 1, 3, 0]). % size 4, 1 gold, 3 pits and 0 bat
 
 init_agent :-
     assert(lacoes([goforward,turnleft,goforward,goforward,turnleft,shoot,grab,turnleft,goforward,goforward,turnright,goforward,climb])).
