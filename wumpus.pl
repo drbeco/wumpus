@@ -991,11 +991,11 @@ assert_setup :-
 assert_setup :-
     current_predicate(get_setup, get_setup(_)), % case manual_setup asserted
     get_setup(Lout),
-    writeln('Debug'),
+    %writeln('Debug'),
     writeln(Lout),
     !,
-    format('Reusing setup: Size=~w, Type=~w, Move=~w, Gold=~w, Pit=~w, Bat=~w, Adv=~i~n', Lout),
-    writeln('foi').
+    format('Reusing setup: Size=~w, Type=~w, Move=~w, Gold=~w, Pit=~w, Bat=~w, Adv=~i~n', Lout).
+    %writeln('foi').
 
 assert_setup :-
     Lout=[4, grid, stander, 0.1, 0.2, 0.1, [no, no]], % defaulf
