@@ -46,6 +46,7 @@
 % 5. shoot,        % shoots an arrow
 % 6. sit,          % sit and do nothing
 % 7. climb,        % climbs out the cave from square [1,1]
+% 8. gps,          % reads G=[[X,Y], O], agent position and orientation
 %
 % World Setup:
 %
@@ -107,7 +108,7 @@
 %   * +500 points for each gold AFTER climbing alive
 %   * +1000 points for killing the Wumpus
 %   * -1000 for dying (1. eaten alive by wumpus, 2. falling into a pit, 3. walking until exhausted)
-%   * -1 for action (sit, turnright, turnleft, goforward, grab, shoot, climb)
+%   * -1 for action (sit, turnright, turnleft, goforward, grab, shoot, climb, gps)
 %
 
 % Protect all predicates (make private), except the ones listed bellow:
@@ -131,7 +132,9 @@
     sit/0,          % sit and do nothing
     si/0,           % shortcut for sit
     climb/0,        % manually climbs out the cave
-    cl/0]).         % shortcut for climb
+    cl/0,           % shortcut for climb
+    gps/0,          % manually reads the GPS
+    gp/0]).         % shortgut for gps
 
 :- dynamic([
     get_setup/1,            % get world setup (from world_setup or from default setup)
@@ -196,6 +199,8 @@ cl :- climb.
 climb :- manual_execute(climb).
 si :- sit.
 sit :- manual_execute(sit).
+gp :- gps.
+gps :- manual_execute(gps).
 
 manual_execute(A) :-
     agent_num_actions(N), % current action
@@ -273,7 +278,7 @@ run_agent_action(_) :-               % agent allowed only N actions as
 
 run_agent_action(Percept) :-
     run_agent(Percept,Action),          % needs to be defined externally
-    check_agent_action(Action),         % check for goforward, turnright, turnleft, shoot, grab, sit or climb.
+    check_agent_action(Action),         % check for goforward, turnright, turnleft, shoot, grab, sit, climb or gps.
     agent_num_actions(NumActions),      % current action
     format("~nExternal action #~w: run_agent(~w,~w)~n", [NumActions, Percept, Action]),
     execute(Action,Percept1),
@@ -457,6 +462,7 @@ dodeca_map([
 %   6. climb:     if in square 1,1, leaves the cave and adds 500 points
 %                 for each piece of gold
 %   7. sit:       do nothing, costs one action and -1 score
+%   8. gps:       reads G=[[X,Y], O], agent position and orientation
 %
 %   Percept = [Stench,Breeze,Glitter,Bump,Scream,Rustle]
 %   each having a value of either 'yes' or 'no'.
@@ -553,6 +559,8 @@ execute(sit,[Stench,Breeze,Glitter,no,no,Rustle]) :-
     breeze(Breeze),
     glitter(Glitter),
     rustle(Rustle).
+
+execute(gps,[Stench,Breeze,Glitter,no,no,Rustle]) :- nothing.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Perceptions [Stench,Breeze,Glitter,Bump,Scream]
@@ -937,7 +945,7 @@ ww_place_objects_det(Obj, Qtd, [H|T]) :-
     ww_place_objects_det(Obj, Q1, S1).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% check for goforward, turnright, turnleft, shoot, grab or climb.
+% check for goforward, turnright, turnleft, shoot, grab, climb, sit or gps.
 check_agent_action(A) :- nonvar(A), !, check_agent_action_which(A), !.
 check_agent_action(_) :- format("Agent gave no actions!~n"), !, fail.
 check_agent_action_which(goforward).
@@ -947,6 +955,7 @@ check_agent_action_which(shoot).
 check_agent_action_which(grab).
 check_agent_action_which(climb).
 check_agent_action_which(sit).
+check_agent_action_which(gps).
 check_agent_action_which(_) :- format("Agent gave unknow action!~n"), !, fail.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1053,7 +1062,7 @@ check_setup_size(dodeca, _, 20).
 % Types of Wumpus Movement
 check_setup_move(walker, walker). % original: moves when it hears a shoot, or you enter its cave
 check_setup_move(runner, runner). % go forward and turn left or right on bumps, maybe on pits
-check_setup_move(wanderer, wanderer). % arbitrarily choses an action from [sil,turnleft,turnright,goforward]
+check_setup_move(wanderer, wanderer). % arbitrarily choses an action from [sit,turnleft,turnright,goforward]
 check_setup_move(spinner, spinner). % goforward, turnright, repeat.
 check_setup_move(hoarder, hoarder). % go to one of the golds and sit
 check_setup_move(spelunker, spelunker). % go to a pit and sit
