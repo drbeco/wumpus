@@ -1,6 +1,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %    Hunt The Wumpus - World Simulator                                          %
-%    Copyright (C) 2012 - 2016  Ruben Carlo Benante <rcb at beco dot cc>        %
+%    Copyright (C) 2012 - 2017  Ruben Carlo Benante <rcb at beco dot cc>        %
 %                                                                               %
 %    This program is free software; you can redistribute it and/or modify       %
 %    it under the terms of the GNU General Public License as published by       %
@@ -306,7 +306,7 @@ initialize_world :-
     ww_retract_all, % retract ww list (wumpus, gold, pit and bat, and all initial state variables)
     assert_setup,   % assert user or default setup
     get_setup(L),   % L=[Size, Type, Move, Gold, Pit, Bat, Adv], Adv=[RandS, RandA]
-    L=[Size, _Type, Move, Gold, Pit, Bat|_],
+    L=[Size, Type, Move, Gold, Pit, Bat|_],
     ww_addto_init_state(world_extent(Size)),
     random(0, 4, WAngN),
     WAng is WAngN * 90,
@@ -316,7 +316,7 @@ initialize_world :-
     ww_addto_init_state(gold_probability(Gold)),     % Probability that a location has gold
     ww_addto_init_state(pit_probability(Pit)),       % Probability that a non-(1,1) location has a pit
     ww_addto_init_state(bat_probability(Bat)),       % Probability that a location has bats
-    Actions is Size * Size * 4,                      % 4 actions per square average (fig62 is 2.875 moves per square)
+    set_max_agent_actions(Size, Type, Actions),      % 4 actions per square average (fig62 is 2.875 moves per square)
     ww_addto_init_state(max_agent_actions(Actions)), % Maximum actions per trial allowed by agent
     ww_addto_init_state(wumpus_move_rule(Move)),     % Wumpus move style
     initialize_world_type(L).
@@ -899,7 +899,7 @@ ww_par(F, P) :- % F=gold(1,3), P=[gold, 2]
 ww_place_it(_, _, []).
 
 ww_place_it(gold, Qt, Sq) :-
-    float(Qt),
+    float(Qt), !,
     ww_place_objects_det(gold, 1, Sq),   % put one for sure
     ww_place_objects_prob(gold, Qt, Sq). % and lets see how many others
 
@@ -991,11 +991,9 @@ assert_setup :-
 assert_setup :-
     current_predicate(get_setup, get_setup(_)), % case manual_setup asserted
     get_setup(Lout),
-    %writeln('Debug'),
     writeln(Lout),
     !,
     format('Reusing setup: Size=~w, Type=~w, Move=~w, Gold=~w, Pit=~w, Bat=~w, Adv=~i~n', Lout).
-    %writeln('foi').
 
 assert_setup :-
     Lout=[4, grid, stander, 0.1, 0.2, 0.1, [no, no]], % defaulf
@@ -1463,6 +1461,9 @@ direction_action(A1, A2, turnleft) :- A1 < A2, !.
 direction_action(A1, A2, turnright) :- A1 > A2, !.
 direction_action(_, _, goforward).
 
+% give back max agent actions accordinly with size and type
+set_max_agent_actions(20, dodeca, 100) :- !.
+set_max_agent_actions(S, _, M) :- M is S*S*4.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % converts radians to degrees
@@ -1508,7 +1509,7 @@ has_hazard_type(X, _, F, dodeca) :-
 
 % maybe/1: success with probability P
 maybe(P) :-
-    random(N),
+    random(N), !,
     N<P.
 % maybe/0: success with probability 0.5
 maybe :- maybe(0.5).
@@ -1691,4 +1692,9 @@ all_squares_1(Extent,Row,Col,[[Row,Col]|RestSqrs]) :-
     Col < Extent,
     Col1 is Col + 1,
     all_squares_1(Extent,Row,Col1,RestSqrs).
+
+
+/* ----------------------------------------------------------------------- */
+/* vi: set ai et ts=4 sw=4 tw=0 wm=0 fo=croql : PL config for Vim modeline */
+/* Template by Dr. Beco <rcb at beco dot cc>       Version 20150620.224740 */
 
