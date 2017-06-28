@@ -295,16 +295,17 @@ run_agent_action(Percept) :-
 
 % initialize(Percept): initializes the Wumpus world and our fearless
 %   agent and returns the Percept from square 1,1.
-%   Percept = [Stench,Breeze,Glitter,Bump,Scream,Rustle]
+%   Percept = [Stench,Breeze,Glitter,Bump,Scream,Rustle,GPS]
 
-initialize([Stench, Breeze, Glitter, Bump, no, Rustle]) :-
+initialize([Stench, Breeze, Glitter, Bump, no, Rustle, GPS]) :-
     initialize_world,
     initialize_agent,
     stench(Stench),        % #1 stench(Stench) Wumpus may be nearby (no Wumpus on [1,1])
     breeze(Breeze),        % #2 no pit on [1,1] and grid: [1,2],[2,1] or dodeca: [2,2],[5,2],[8,2]
     glitter(Glitter),      % #3 no gold on [1,1]
     will_bump(Bump),       % #4 check if agent is facing a wall at start
-    rustle(Rustle).        % #6 no bat on [1,1], and grid: [1,2],[2,1] or dodeca: [2,2],[5,2],[8,2]
+    rustle(Rustle),        % #6 no bat on [1,1], and grid: [1,2],[2,1] or dodeca: [2,2],[5,2],[8,2]
+    get_gps(GPS).          % #7 get GPS coordinates [[Xpos, Ypos], Angle]
 
 % initialize_world: gather information
 initialize_world :-
@@ -465,17 +466,20 @@ dodeca_map([
 %   8. gps:       reads G=[[X,Y], O], agent position and orientation
 %
 %   Percept = [Stench,Breeze,Glitter,Bump,Scream,Rustle]
-%   each having a value of either 'yes' or 'no'.
+%   Percept = [Fetor,Ventilation,Luster,Tumble,Bellow,Rustle,GPS]
+%   Percept = [F,V,L,T,B,R,G]
+%   each having a value of either 'yes' or 'no', except
+%   GPS = [[Xpos,Ypos],Orient] or GPS=[]
 
-execute(_,[no,no,no,no,no,no]) :-
+execute(_,[no,no,no,no,no,no,[]]) :-
     agent_health(dead), !,         % agent must be alive to execute actions
     format("You are dead!~n",[]).
 
-execute(_,[no,no,no,no,no,no]) :-
+execute(_,[no,no,no,no,no,no,[]]) :-
     agent_in_cave(no), !,         % agent must be in the cave
     format("You have left the cave.~n",[]).
 
-execute(goforward,[Stench,Breeze,Glitter,Bump,no,Rustle]) :-
+execute(goforward,[Stench,Breeze,Glitter,Bump,no,Rustle,[]]) :-
     decrement_score,
     goforward(Bump),        % update location and check for bump
     move_wumpus(goforward), % move wumpus according to the rule set, before bats grab him
@@ -485,7 +489,7 @@ execute(goforward,[Stench,Breeze,Glitter,Bump,no,Rustle]) :-
     breeze(Breeze),
     glitter(Glitter).
 
-execute(turnleft,[Stench,Breeze,Glitter,no,no,Rustle]) :-
+execute(turnleft,[Stench,Breeze,Glitter,no,no,Rustle,[]]) :-
     decrement_score,
     agent_orientation(Angle),
     NewAngle is (Angle + 90) mod 360,
@@ -498,7 +502,7 @@ execute(turnleft,[Stench,Breeze,Glitter,no,no,Rustle]) :-
     glitter(Glitter),
     rustle(Rustle).
 
-execute(turnright,[Stench,Breeze,Glitter,no,no,Rustle]) :-
+execute(turnright,[Stench,Breeze,Glitter,no,no,Rustle,[]]) :-
     decrement_score,
     agent_orientation(Angle),
     NewAngle is (Angle + 270) mod 360,
@@ -511,7 +515,7 @@ execute(turnright,[Stench,Breeze,Glitter,no,no,Rustle]) :-
     glitter(Glitter),
     rustle(Rustle).
 
-execute(grab,[Stench,Breeze,no,no,no,Rustle]) :-
+execute(grab,[Stench,Breeze,no,no,no,Rustle,[]]) :-
     decrement_score,
     get_the_gold,
     move_wumpus(grab),      % move wumpus according to the rule set
@@ -520,7 +524,7 @@ execute(grab,[Stench,Breeze,no,no,no,Rustle]) :-
     breeze(Breeze),
     rustle(Rustle).
 
-execute(shoot,[Stench,Breeze,Glitter,no,Scream,Rustle]) :-
+execute(shoot,[Stench,Breeze,Glitter,no,Scream,Rustle,[]]) :-
     decrement_score,
     move_wumpus(shoot),     % move wumpus according to the rule set
     shoot_arrow(Scream),    % shoot after wumpus move, as it may dodge the arrow
@@ -530,7 +534,7 @@ execute(shoot,[Stench,Breeze,Glitter,no,Scream,Rustle]) :-
     glitter(Glitter),
     rustle(Rustle).
 
-execute(climb,[no,no,no,no,no,no]) :-
+execute(climb,[no,no,no,no,no,no,[]]) :-
     agent_location(1,1), !,
     decrement_score,
     agent_gold(G),
@@ -541,7 +545,7 @@ execute(climb,[no,no,no,no,no,no]) :-
     assert(agent_in_cave(no)),
     format("I am outta here.~n",[]).
 
-execute(climb,[Stench,Breeze,Glitter,no,no,Rustle]) :-
+execute(climb,[Stench,Breeze,Glitter,no,no,Rustle,[]]) :-
     decrement_score,
     format("You cannot leave the cave from here.~n",[]),
     move_wumpus(climb),     % move wumpus according to the rule set
@@ -551,7 +555,7 @@ execute(climb,[Stench,Breeze,Glitter,no,no,Rustle]) :-
     glitter(Glitter),
     rustle(Rustle).
 
-execute(sit,[Stench,Breeze,Glitter,no,no,Rustle]) :-
+execute(sit,[Stench,Breeze,Glitter,no,no,Rustle,[]]) :-
     decrement_score,
     move_wumpus(sit),       % move wumpus according to the rule set
     update_agent_health,    % check for wumpus, pit or max actions
@@ -560,10 +564,18 @@ execute(sit,[Stench,Breeze,Glitter,no,no,Rustle]) :-
     glitter(Glitter),
     rustle(Rustle).
 
-execute(gps,[Stench,Breeze,Glitter,no,no,Rustle]) :- nothing.
+execute(gps,[Stench,Breeze,Glitter,no,no,Rustle,GPS]) :-
+    decrement_score,
+    move_wumpus(gps),       % move wumpus according to the rule set
+    update_agent_health,    % check for wumpus, pit or max actions
+    stench(Stench),
+    breeze(Breeze),
+    glitter(Glitter),
+    rustle(Rustle),
+    get_gps(GPS).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Perceptions [Stench,Breeze,Glitter,Bump,Scream]
+% Perceptions [Stench,Breeze,Glitter,Bump,Scream,GPS]
 
 % stench(Stench): Stench = yes if wumpus (dead or alive) is in a square
 %   directly up, down, left, or right of the current agent location.
@@ -594,6 +606,18 @@ glitter(yes) :-
     !.
 
 glitter(no).
+
+% gps(GPS): GPS=[[Xpos,Ypos],Orient], give to agent the coordinates
+
+get_gps([[X, Y], A]) :-
+    allow_gps(yes), % check if GPS consults are allowed
+    agent_location(X, Y),
+    agent_orientation(A),
+    !.
+
+get_gps([]).
+
+allow_gps(yes). % DEBUG: change this setting to have options to block gps. TODO
 
 % goforward(Bump): Attempts to move agent forward one unit along
 %   its current orientation.
