@@ -490,7 +490,7 @@ execute(goforward,[Stench,Breeze,Glitter,Bump,no,Rustle,[]]) :-
     stench(Stench),         % update rest of percept
     breeze(Breeze),
     glitter(Glitter),
-    update_agent_orienation(Bump). %dodeca agent is with his back the the door he came through
+    update_agent_orientation(Bump). %dodeca agent is with his back the the door he came through
 
 execute(turnleft,[Stench,Breeze,Glitter,no,no,Rustle,[]]) :-
     decrement_score,
@@ -745,18 +745,16 @@ update_agent_health.
 % update_agent_orientation:
 % dodeca map: agent is with his back to the door he came through.
 
-
-% no bumps, agent moved alright
+% no bumps, no bats, agent moved alright
 update_agent_orientation(no) :-
     get_setup([_,dodeca|_]),
-    !,
     agent_old_location(Xo, _),
     agent_location(Xn, _),
-    back_door(Xo, Xn, A),
+    back_door(Xo, Xn, A), %fails if there is no path back (bat drop)
     retract(agent_orientation(_)),
     assert(agent_orientation(A)).
 
-update_agent_orientation(_) :- !. % if bumped, or not dodeca, nothing to do
+update_agent_orientation(_) :- !. % if bumped, not dodeca or no path (bat drop): nothing to do
 
 % get_the_gold: adds gold to agents loot if any gold in the square
 
@@ -764,7 +762,7 @@ back_door(Xo, Xn, A) :-
     dodeca_map(L),
     member([Xn, Adjs], L),
     nth0(I, Adjs, Xo),
-    A is I * 90.
+    A is ((I + 2) mod 4) * 90. % new angle, back to the door he came 
 
 get_the_gold :-
     agent_location(X,Y),
