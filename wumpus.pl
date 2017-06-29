@@ -151,7 +151,8 @@
     pit_probability/1,      % ww Probability that a non-(1,1) location has a pit (default 0.20)
     bat_probability/1,      % ww Probability that a non-(1,1) location has a bat (default 0.10)
     max_agent_actions/1,    % ww Maximum actions per trial allowed by agent (default 4*squardes)
-    agent_location/2,       % Agent location: (X,Y) on grid; (CaveNumber, Level) on dodeca;
+    agent_location/2,       % Agent location. (X,Y) on grid; (CaveNumber, Level) on dodeca;
+    agent_old_location/2,   % Agent previous location. (X,Y) on grid; (CaveNumber, Level) on dodeca;
     agent_orientation/1,    % Agent orientation: 0/East/Right, 90/North/Up, 180/West/Left, 270/South/Down
     agent_in_cave/1,        % Agent is inside cave: yes/no
     agent_health/1,         % Agent health: alive/dead
@@ -375,7 +376,6 @@ initialize_agent_advanced :-
     initialize_agent_orientation(Adv).
 
 initialize_agent_location(S, T, [yes|_]) :- % RandS = yes, random agent start location
-    !,
     all_squares_type(T, S, All),
     findall([Xb, Yb], bat(Xb, Yb), AllBats),    % find all bats
     findall([Xp, Yp], pit(Xp, Yp), AllPits),    % find all pits
@@ -387,14 +387,16 @@ initialize_agent_location(S, T, [yes|_]) :- % RandS = yes, random agent start lo
     delete(AllBBPGolds, [Wx, Wy], AllButs),     % All but bats, pits, golds and Wumpus
     random_member([Ax, Ay], AllButs),           % Pick one
     retractall(agent_location(_,_)),
-    assert(agent_location(Ax, Ay)).
+    assert(agent_location(Ax, Ay)),
+    retractall(agent_old_location(_,_)), 
+    assert(agent_old_location(Ax, Ay)),  % In the begining, they are the same (previous and current)
+    !.
 
-initialize_agent_location(_, _, [no|_]) :- % RandS = no, agent at [1,1]
+initialize_agent_location(_, _, _) :-    % RandS = no, agent at [1,1]
     retractall(agent_location(_,_)),
-    assert(agent_location(1, 1)), !.
-
-initialize_agent_location(_, _, [_]) :- % RandS = no, agent at [1,1]
-    writeln('Bug L391, take a look at check_setup').
+    assert(agent_location(1, 1)),
+    retractall(agent_old_location(_,_)), 
+    assert(agent_old_location(1, 1)).    % In the begining, they are the same (previous and current)
 
 initialize_agent_orientation([_, yes|_]) :-
     retractall(agent_orientation(_)),
@@ -487,7 +489,8 @@ execute(goforward,[Stench,Breeze,Glitter,Bump,no,Rustle,[]]) :-
     update_agent_health,    % check for wumpus, pit or max actions
     stench(Stench),         % update rest of percept
     breeze(Breeze),
-    glitter(Glitter).
+    glitter(Glitter),
+    update_agent_orienation(Bump). %dodeca agent is with his back the the door he came through
 
 execute(turnleft,[Stench,Breeze,Glitter,no,no,Rustle,[]]) :-
     decrement_score,
@@ -627,8 +630,10 @@ goforward(no) :-
     agent_location(X,Y),
     new_location(X,Y,Angle,X1,Y1),  % fail if bump
     !,
-    retract(agent_location(X,Y)),   % update location
-    assert(agent_location(X1,Y1)).  % if it has bats, it will update again
+    retractall(agent_old_location(_,_)), % keep track where agent was before
+    assert(agent_old_location(X,Y)),     % update old location
+    retractall(agent_location(_,_)),     % update new location
+    assert(agent_location(X1,Y1)).       % if it has bats, it will update again
 
 goforward(yes) :-     % Ran into wall, Bump = yes
     format("Not possible! Bumped a wall!~n", []).
@@ -669,6 +674,8 @@ elsewhereville(Rustle) :-
     findall([BX,BY], bat(BX, BY), AllBats), % find all bats
     subtract(All1, AllBats, BatList), % remove all bats from possible new square
     random_member([AX, AY], BatList), % chose a new square [AX, AY]
+    retractall(agent_old_location(_,_)), % update old location (again)
+    assert(agent_old_location(X,Y)),     % the old location has a bat!
     retractall(agent_location(_,_)),
     assert(agent_location(AX, AY)),
     rustle(Rustle),
@@ -734,7 +741,30 @@ update_agent_health :-
 
 update_agent_health.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% update_agent_orientation:
+% dodeca map: agent is with his back to the door he came through.
+
+
+% no bumps, agent moved alright
+update_agent_orientation(no) :-
+    get_setup([_,dodeca|_]),
+    !,
+    agent_old_location(Xo, _),
+    agent_location(Xn, _),
+    back_door(Xo, Xn, A),
+    retract(agent_orientation(_)),
+    assert(agent_orientation(A)).
+
+update_agent_orientation(_) :- !. % if bumped, or not dodeca, nothing to do
+
 % get_the_gold: adds gold to agents loot if any gold in the square
+
+back_door(Xo, Xn, A) :-
+    dodeca_map(L),
+    member([Xn, Adjs], L),
+    nth0(I, Adjs, Xo),
+    A is I * 90.
 
 get_the_gold :-
     agent_location(X,Y),
@@ -1010,6 +1040,7 @@ check_agent_action_which(_) :- format("Agent gave unknow action!~n"), !, fail.
 %   - grid, wumpus movement 'walker'
 %   - [yes]: RandS, random agent start location
 %
+% TODO: check setup for gps / allow_gps(yes). Adv=[RandS, RandA, GPS]
 
 %get_setup([Size, Type, Move, Gold, Pit, Bat, [RandS, RandA]])
 assert_setup :-
