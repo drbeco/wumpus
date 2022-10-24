@@ -96,6 +96,7 @@ run_agent(Per, Act) :-
     format("Next Action: ~w~n", [Act]).
 
 % atualiza seguras e visitadas apenas
+% update secure and visited only
 update_safe(P) :-
     safe(S),
     retractall(safe(_)),
@@ -104,6 +105,7 @@ update_safe(P) :-
     format("~nSafe squares: ~w~n", [S1]).
 
 % se indo embora, vai cadastrando todas as seguras do caminho
+% if leaving, mark all secures in the way
 add_safe([no,no|_], P) :-
     near_grid(P, Adj),
     safe(S),
@@ -136,6 +138,7 @@ update_action :-
 
 %---------------------------------------------------------------
 % Tem alvo? Continua cumprindo.
+% Does it still have a target? If so, keep complying.
 select(_, Act) :-
     mpos(Mpos),
     target(Targ),
@@ -147,6 +150,7 @@ select(_, Act) :-
     %assert(target([])).
 
 % brilho? pega
+% If it shines, it is gold, grab.
 select([_,_,yes|_], grab) :-
     gold(G),
     retractall(gold(_)),
@@ -155,6 +159,7 @@ select([_,_,yes|_], grab) :-
     format("Gimme that gold! (~w)~n", [G1]).
 
 % fedor, wumpus vivo e tenho flecha? atira
+% If it stinks, and I have an arrow? shoot
 select(Per, shoot) :-
     Per=[yes|_],
     wumpus(alive),
@@ -165,6 +170,7 @@ select(Per, shoot) :-
     add_safe_by_arrow(Per).
 
 % grito e sem brisa? eba, matei! pisa no cadaver
+% if it cries, and there is no breeze, walks over the dead body
 select([_, no, _, _, yes|_], goforward) :-
     retractall(wumpus(_)),
     assert(wumpus(dead)),
@@ -175,6 +181,8 @@ select([_, no, _, _, yes|_], goforward) :-
     go_grid_adj(Mpos, _, Ang, goforward). % Stump his body!
 
 % grito com brisa? eba, matei! Mas nao sei o que fazer... 
+% if it cries, but there is a breeze, I don't know what to do
+% TODO: add a default action here, if needed
 select([_, yes, _, _, yes|_], _) :- %goforward) :-
     retractall(wumpus(_)),
     assert(wumpus(dead)),
@@ -184,6 +192,7 @@ select([_, yes, _, _, yes|_], _) :- %goforward) :-
 %---------------------------------------------------------------
 
 % tenho ouro OU wumpus morto e longe da saida? missao cumprida! volta
+% I have the gold OR the wumpus is dead, and I'm far away from the exit? Mission accomplished, lets go back
 select(Per, Act) :-
     mpos(Mpos),
     Mpos \== [1,1],
@@ -198,6 +207,7 @@ select(Per, Act) :-
     go_grid_adj(Mpos, T, Ang, Act).
 
 % tenho ouro OU wumpus morto e na saida? missao cumprida! escalar
+% I have the gold OR the wumpus is dead, and I'm at the exit? Mission accomplished, lets climb
 select(_, climb) :-
     mpos([1,1]),
     gold(G),
@@ -208,12 +218,14 @@ select(_, climb) :-
 %---------------------------------------------------------------
 
 % Acabando as acoes, to na saida? escalar
+% I have few actions, but I'm at the exit point? climb
 select(_, climb) :-
     action_overflow,
     mpos([1,1]),
     format("Climbing out of this filth place!~n").
 
 % Acabando as acoes? voltar
+% Few action, not at the exit point? Target to go back
 select(Per, Act) :-
     action_overflow,
     mpos(Mpos),
@@ -227,6 +239,7 @@ select(Per, Act) :-
 %---------------------------------------------------------------
 
 % fedor, wumpus vivo ainda, e nao tenho flecha? vai na seguranca
+% Stinks, Wumpus alive, I do not have arrows? Go only in safe caves
 select([yes|_], Act) :-
     action_ok,
     wumpus(alive),
@@ -238,6 +251,7 @@ select([yes|_], Act) :-
     go_grid_adj(Mpos, T, Ang, Act).
 
 % brisa? volta
+% A breeze? Go back
 select([_, yes|_], Act) :-
     action_ok,
     new_target(back,T),
@@ -247,6 +261,7 @@ select([_, yes|_], Act) :-
     go_grid_adj(Mpos, T, Ang, Act).
 
 % brisa, e nao volta? escalar
+% A breeze, and I can't go back? Climb
 select([_, yes|_], climb) :-
     action_ok,
     mpos([1,1]),
@@ -255,6 +270,7 @@ select([_, yes|_], climb) :-
 %---------------------------------------------------------------
 
 % nada? explorar o mundo
+% Nothing here? Let's explore the world
 select([no, no | _], Act) :-
     new_target(explore, T),
     mpos(Mpos),
@@ -366,6 +382,7 @@ new_target(force, Targ) :-
     assert(target(Targ)).
 
 % Dada posicao P, retorna lista com casas adjacentes validas
+% Given P position, return the list of valid adjacent caves
 near_grid(P, L) :-
     near_grid_e(P, [], Le),
     near_grid_n(P, Le, Ln),
