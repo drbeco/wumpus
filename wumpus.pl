@@ -1,6 +1,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %    Hunt The Wumpus - World Simulator                                          %
-%    Copyright (C) 2012 - 2017  Ruben Carlo Benante <rcb at beco dot cc>        %
+%    Copyright (C) 2012 - 2022  Ruben Carlo Benante <rcb at beco dot cc>        %
 %                                                                               %
 %    This program is free software; you can redistribute it and/or modify       %
 %    it under the terms of the GNU General Public License as published by       %
@@ -20,7 +20,7 @@
 %   Edited, Compiled, Modified by:
 %   Author:
 %     - Ruben Carlo Benante (rcb@beco.cc)
-%   Copyright: 2012 - 2016
+%   Copyright: 2012 - 2022
 %   License: GNU GPL Version 2.0
 %
 %   Based on:

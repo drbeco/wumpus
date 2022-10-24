@@ -8,7 +8,7 @@ Author:
 
 - Ruben Carlo Benante (rcb@beco.cc)
 
-Copyright: 2012 - 2016
+Copyright: 2012 - 2022
 
 License: GNU GPL Version 2.0
 
