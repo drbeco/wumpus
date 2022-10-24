@@ -30,6 +30,649 @@ to his wikipedia page:
 
 https://en.wikipedia.org/wiki/Gregory_Yob
 
+## How to start the simulation
+
+### Let the agents play
+
+To start an agent, on your shell, type (for example, agent 001):
+
+```
+$ swipl -s agente001.pl
+```
+
+Then it will give you a SWI-Prolog prompt `?-`, after the welcome message:
+
+```
+Welcome to SWI-Prolog (threaded, 64 bits, version 8.4.3)
+SWI-Prolog comes with ABSOLUTELY NO WARRANTY. This is free software.
+Please run ?- license. for legal details.
+
+For online help and background, visit https://www.swi-prolog.org
+For built-in help, use ?- help(Topic). or ?- apropos(Word).
+
+?-
+```
+
+Now you simply type `start` and the agent will take over and run until it finishes either successfully or it dies for some reason.
+The reasons for dying are:
+
+- Starvation: you used all allowed actions for that board size
+- Hunted by the Wumpus: you got eaten by a beast
+- Fell in a pit: you steped in an endless abyss
+
+Lets see the two first actions of agent 001:
+
+```
+?- start.
+Trial 1
+User defined setup: Size=5, Type=grid, Move=walker, Gold=0.2, Pit=0.1, Bat=0.1, Adv=[no,no]
+External init_agent...
+-------------------------------
+|     |     |     |     |     |
+-------------------------------
+|    G|     |    G|     |     |
+-------------------------------
+|    G|     |    G|     |  P  |
+-------------------------------
+|     |W   G|     |    G|     |
+-------------------------------
+| A   |     |     |     |     |
+-------------------------------
+wumpus_move_rule(walker)
+wumpus_health(alive)
+wumpus_orientation(270)
+wumpus_location(2,2)
+wumpus_last_action(sit)
+
+agent_health(alive)
+agent_orientation(0)
+agent_location(1,1)
+agent_arrows(1)
+agent_gold(0)
+
+Safe squares: [[1,1]]
+Number of actions: 1
+I fell like exploring this place a bit...
+New position: [1,1] -> [2,1]
+Next Target: []
+Next Action: goforward
+```
+
+This is the action:
+
+```
+External action #1: run_agent([no,no,no,no,no,no,[[1,1],0]],goforward)
+```
+
+and the board appears with the result:
+
+```
+-------------------------------
+|     |     |     |     |     |
+-------------------------------
+|    G|     |    G|     |     |
+-------------------------------
+|    G|     |    G|     |  P  |
+-------------------------------
+|     |W   G|     |    G|     |
+-------------------------------
+|     | A   |     |     |     |
+-------------------------------
+wumpus_move_rule(walker)
+wumpus_health(alive)
+wumpus_orientation(270)
+wumpus_location(2,2)
+wumpus_last_action(sit)
+
+agent_health(alive)
+agent_orientation(0)
+agent_location(2,1)
+agent_arrows(1)
+agent_gold(0)
+
+Safe squares: [[1,1],[2,1]]
+Number of actions: 2
+Shoot the bastard!
+
+Safe squares: [[1,1],[2,1],[3,1]]
+Next Target: []
+Next Action: shoot
+
+External action #2: run_agent([yes,no,no,no,no,no,[]],shoot)
+You now have 0 arrow(s).
+```
+
+And above action 2 is shoot, continuing the game. Lets skip some actions and see the end:
+
+```
+External action #22: run_agent([yes,no,no,no,no,no,[]],goforward)
+-------------------------------
+|     |     |     |     |     |
+-------------------------------
+|    G|     |    G|     |     |
+-------------------------------
+|    G|     |    G|     |  P  |
+-------------------------------
+|     |W   G|     |     |     |
+-------------------------------
+| A   |     |     |     |     |
+-------------------------------
+wumpus_move_rule(walker)
+wumpus_health(alive)
+wumpus_orientation(0)
+wumpus_location(2,2)
+wumpus_last_action(sit)
+
+agent_health(alive)
+agent_orientation(180)
+agent_location(1,1)
+agent_arrows(0)
+agent_gold(1)
+
+Safe squares: [[5,1],[5,2],[4,3],[4,2],[4,1],[3,2],[3,1],[2,1],[1,1]]
+Number of actions: 23
+Got the bucks! Getting out!
+Next Target: []
+Next Action: climb
+
+External action #23: run_agent([no,no,no,no,no,no,[]],climb)
+I am outta here.
+-------------------------------
+|     |     |     |     |     |
+-------------------------------
+|    G|     |    G|     |     |
+-------------------------------
+|    G|     |    G|     |  P  |
+-------------------------------
+|     |W   G|     |     |     |
+-------------------------------
+| A   |     |     |     |     |
+-------------------------------
+wumpus_move_rule(walker)
+wumpus_health(alive)
+wumpus_orientation(0)
+wumpus_location(2,2)
+wumpus_last_action(sit)
+
+agent_health(alive)
+agent_orientation(180)
+agent_location(1,1)
+agent_arrows(0)
+agent_gold(1)
+Score: 477
+true.
+
+?-
+```
+
+In this case the agent 001 was successful and returned home with a positive score. You can exit by typing:
+
+```
+?- halt.
+```
+
+### Let's play manually
+
+You can play the game yourself, instead of looking to an agent. To play, you start by calling:
+
+```
+$ swipl -s wumpus.pl 
+Welcome to SWI-Prolog (threaded, 64 bits, version 8.4.3)
+SWI-Prolog comes with ABSOLUTELY NO WARRANTY. This is free software.
+Please run ?- license. for legal details.
+
+For online help and background, visit https://www.swi-prolog.org
+For built-in help, use ?- help(Topic). or ?- apropos(Word).
+
+?-
+```
+
+Now enter the setup of the world you would like to play, with `manual_setup` and then `manual_init`. Say:
+
+```
+?- manual_setup([5, grid, walker, 0.2, 0.1, 0.1, [no]]).
+true.
+
+?- manual_init.
+[5,grid,walker,0.2,0.1,0.1,[no,no]]
+Reusing setup: Size=5, Type=grid, Move=walker, Gold=0.2, Pit=0.1, Bat=0.1, Adv=
+
+World Setup: [5,grid,walker,0.2,0.1,0.1,[no,no]]
+First Impression: [no,no,no,no,no,no,[[1,1],0]]
+-------------------------------
+|     |    G|     |     |     |
+-------------------------------
+|    G|     |     |  PB |     |
+-------------------------------
+|     |     |     |     |    G|
+-------------------------------
+|     |     |     |W  BG|   B |
+-------------------------------
+| A   |     |     |     |    G|
+-------------------------------
+wumpus_move_rule(walker)
+wumpus_health(alive)
+wumpus_orientation(0)
+wumpus_location(4,2)
+wumpus_last_action(sit)
+
+agent_health(alive)
+agent_orientation(0)
+agent_location(1,1)
+agent_arrows(1)
+agent_gold(0)
+true.
+
+?-
+```
+
+Now you can play using the following commands (do not forget to end the line with a period):
+
+```
+- go (or goforward): moves the agent to the direction the nose is pointing
+- tr (or turn, turnright, turnr): turn the agent clockwise
+- tl (or turnl, turnleft): turn the agent anti-clockwise
+- grab (or gr): grab the gold, if it is in the same room
+- shoot (or sh): shoot the arrow (hopefully in the Wumpus)
+- climb (or cl): climb out of the cave (if at position [1][1])
+- sit (or si): do nothing
+- gps (gp): asks for coordinates and orientation
+```
+
+Lets see a complete game:
+
+```
+?- manual_setup([5, grid, walker, 0.2, 0.1, 0.1, [no]]).
+true.
+
+?- manual_init.
+[5,grid,walker,0.2,0.1,0.1,[no,no]]
+Reusing setup: Size=5, Type=grid, Move=walker, Gold=0.2, Pit=0.1, Bat=0.1, Adv=
+
+World Setup: [5,grid,walker,0.2,0.1,0.1,[no,no]]
+First Impression: [no,no,no,no,no,no,[[1,1],0]]
+-------------------------------
+|  P  |   B |     |    G|     |
+-------------------------------
+|     |     |W   G|     |   BG|
+-------------------------------
+|    G|     |    G|    G|     |
+-------------------------------
+|     |     |  P G|    G|     |
+-------------------------------
+| A   |     |     |     |     |
+-------------------------------
+wumpus_move_rule(walker)
+wumpus_health(alive)
+wumpus_orientation(180)
+wumpus_location(3,4)
+wumpus_last_action(sit)
+
+agent_health(alive)
+agent_orientation(0)
+agent_location(1,1)
+agent_arrows(1)
+agent_gold(0)
+true.
+
+?- tl.
+
+Action #1: turnleft
+-------------------------------
+|  P  |   B |     |    G|     |
+-------------------------------
+|     |     |W   G|     |   BG|
+-------------------------------
+|    G|     |    G|    G|     |
+-------------------------------
+|     |     |  P G|    G|     |
+-------------------------------
+| A   |     |     |     |     |
+-------------------------------
+wumpus_move_rule(walker)
+wumpus_health(alive)
+wumpus_orientation(180)
+wumpus_location(3,4)
+wumpus_last_action(sit)
+
+agent_health(alive)
+agent_orientation(90)
+agent_location(1,1)
+agent_arrows(1)
+agent_gold(0)
+Perception: [no,no,no,no,no,no,[]]
+Score: -1
+true.
+
+?- go.
+
+Action #2: goforward
+-------------------------------
+|  P  |   B |     |    G|     |
+-------------------------------
+|     |     |W   G|     |   BG|
+-------------------------------
+|    G|     |    G|    G|     |
+-------------------------------
+| A   |     |  P G|    G|     |
+-------------------------------
+|     |     |     |     |     |
+-------------------------------
+wumpus_move_rule(walker)
+wumpus_health(alive)
+wumpus_orientation(180)
+wumpus_location(3,4)
+wumpus_last_action(sit)
+
+agent_health(alive)
+agent_orientation(90)
+agent_location(1,2)
+agent_arrows(1)
+agent_gold(0)
+Perception: [no,no,no,no,no,no,[]]
+Score: -2
+true.
+
+?- go.
+
+Action #3: goforward
+-------------------------------
+|  P  |   B |     |    G|     |
+-------------------------------
+|     |     |W   G|     |   BG|
+-------------------------------
+| A  G|     |    G|    G|     |
+-------------------------------
+|     |     |  P G|    G|     |
+-------------------------------
+|     |     |     |     |     |
+-------------------------------
+wumpus_move_rule(walker)
+wumpus_health(alive)
+wumpus_orientation(180)
+wumpus_location(3,4)
+wumpus_last_action(sit)
+
+agent_health(alive)
+agent_orientation(90)
+agent_location(1,3)
+agent_arrows(1)
+agent_gold(0)
+Perception: [no,no,yes,no,no,no,[]]
+Score: -3
+true.
+
+?- grab.
+You now have 1 piece(s) of gold!
+
+Action #4: grab
+-------------------------------
+|  P  |   B |     |    G|     |
+-------------------------------
+|     |     |W   G|     |   BG|
+-------------------------------
+| A   |     |    G|    G|     |
+-------------------------------
+|     |     |  P G|    G|     |
+-------------------------------
+|     |     |     |     |     |
+-------------------------------
+wumpus_move_rule(walker)
+wumpus_health(alive)
+wumpus_orientation(180)
+wumpus_location(3,4)
+wumpus_last_action(sit)
+
+agent_health(alive)
+agent_orientation(90)
+agent_location(1,3)
+agent_arrows(1)
+agent_gold(1)
+Perception: [no,no,no,no,no,no,[]]
+Score: -4
+true.
+
+?- go.
+
+Action #5: goforward
+-------------------------------
+|  P  |   B |     |    G|     |
+-------------------------------
+| A   |     |W   G|     |   BG|
+-------------------------------
+|     |     |    G|    G|     |
+-------------------------------
+|     |     |  P G|    G|     |
+-------------------------------
+|     |     |     |     |     |
+-------------------------------
+wumpus_move_rule(walker)
+wumpus_health(alive)
+wumpus_orientation(180)
+wumpus_location(3,4)
+wumpus_last_action(sit)
+
+agent_health(alive)
+agent_orientation(90)
+agent_location(1,4)
+agent_arrows(1)
+agent_gold(1)
+Perception: [no,yes,no,no,no,no,[]]
+Score: -5
+true.
+
+?- tr.
+
+Action #6: turnright
+-------------------------------
+|  P  |   B |     |    G|     |
+-------------------------------
+| A   |     |W   G|     |   BG|
+-------------------------------
+|     |     |    G|    G|     |
+-------------------------------
+|     |     |  P G|    G|     |
+-------------------------------
+|     |     |     |     |     |
+-------------------------------
+wumpus_move_rule(walker)
+wumpus_health(alive)
+wumpus_orientation(180)
+wumpus_location(3,4)
+wumpus_last_action(sit)
+
+agent_health(alive)
+agent_orientation(0)
+agent_location(1,4)
+agent_arrows(1)
+agent_gold(1)
+Perception: [no,yes,no,no,no,no,[]]
+Score: -6
+true.
+
+?- shoot.
+You now have 0 arrow(s).
+
+Action #7: shoot
+-------------------------------
+|  P  |   B |     |    G|     |
+-------------------------------
+| A   |W    |    G|     |   BG|
+-------------------------------
+|     |     |    G|    G|     |
+-------------------------------
+|     |     |  P G|    G|     |
+-------------------------------
+|     |     |     |     |     |
+-------------------------------
+wumpus_move_rule(walker)
+wumpus_health(dead)
+wumpus_orientation(180)
+wumpus_location(2,4)
+wumpus_last_action(goforward)
+
+agent_health(alive)
+agent_orientation(0)
+agent_location(1,4)
+agent_arrows(0)
+agent_gold(1)
+Perception: [yes,yes,no,no,yes,no,[]]
+Score: 993
+true.
+
+?- tr.
+
+Action #8: turnright
+-------------------------------
+|  P  |   B |     |    G|     |
+-------------------------------
+| A   |W    |    G|     |   BG|
+-------------------------------
+|     |     |    G|    G|     |
+-------------------------------
+|     |     |  P G|    G|     |
+-------------------------------
+|     |     |     |     |     |
+-------------------------------
+wumpus_move_rule(walker)
+wumpus_health(dead)
+wumpus_orientation(180)
+wumpus_location(2,4)
+wumpus_last_action(goforward)
+
+agent_health(alive)
+agent_orientation(270)
+agent_location(1,4)
+agent_arrows(0)
+agent_gold(1)
+Perception: [yes,yes,no,no,no,no,[]]
+Score: 992
+true.
+
+?- go.
+
+Action #9: goforward
+-------------------------------
+|  P  |   B |     |    G|     |
+-------------------------------
+|     |W    |    G|     |   BG|
+-------------------------------
+| A   |     |    G|    G|     |
+-------------------------------
+|     |     |  P G|    G|     |
+-------------------------------
+|     |     |     |     |     |
+-------------------------------
+wumpus_move_rule(walker)
+wumpus_health(dead)
+wumpus_orientation(180)
+wumpus_location(2,4)
+wumpus_last_action(goforward)
+
+agent_health(alive)
+agent_orientation(270)
+agent_location(1,3)
+agent_arrows(0)
+agent_gold(1)
+Perception: [no,no,no,no,no,no,[]]
+Score: 991
+true.
+
+?- go.
+
+Action #10: goforward
+-------------------------------
+|  P  |   B |     |    G|     |
+-------------------------------
+|     |W    |    G|     |   BG|
+-------------------------------
+|     |     |    G|    G|     |
+-------------------------------
+| A   |     |  P G|    G|     |
+-------------------------------
+|     |     |     |     |     |
+-------------------------------
+wumpus_move_rule(walker)
+wumpus_health(dead)
+wumpus_orientation(180)
+wumpus_location(2,4)
+wumpus_last_action(goforward)
+
+agent_health(alive)
+agent_orientation(270)
+agent_location(1,2)
+agent_arrows(0)
+agent_gold(1)
+Perception: [no,no,no,no,no,no,[]]
+Score: 990
+true.
+
+?- go.
+
+Action #11: goforward
+-------------------------------
+|  P  |   B |     |    G|     |
+-------------------------------
+|     |W    |    G|     |   BG|
+-------------------------------
+|     |     |    G|    G|     |
+-------------------------------
+|     |     |  P G|    G|     |
+-------------------------------
+| A   |     |     |     |     |
+-------------------------------
+wumpus_move_rule(walker)
+wumpus_health(dead)
+wumpus_orientation(180)
+wumpus_location(2,4)
+wumpus_last_action(goforward)
+
+agent_health(alive)
+agent_orientation(270)
+agent_location(1,1)
+agent_arrows(0)
+agent_gold(1)
+Perception: [no,no,no,no,no,no,[]]
+Score: 989
+true.
+
+?- climb.
+I am outta here.
+
+Action #12: climb
+-------------------------------
+|  P  |   B |     |    G|     |
+-------------------------------
+|     |W    |    G|     |   BG|
+-------------------------------
+|     |     |    G|    G|     |
+-------------------------------
+|     |     |  P G|    G|     |
+-------------------------------
+| A   |     |     |     |     |
+-------------------------------
+wumpus_move_rule(walker)
+wumpus_health(dead)
+wumpus_orientation(180)
+wumpus_location(2,4)
+wumpus_last_action(goforward)
+
+agent_health(alive)
+agent_orientation(270)
+agent_location(1,1)
+agent_arrows(0)
+agent_gold(1)
+Perception: [no,no,no,no,no,no,[]]
+Score: 1488
+true.
+
+?- halt.
+$
+```
+
+Phewww... The Wumpus almost got to us! But in the end, it was a complete success.
+
+
 ## Agents
 
 ### Agent 001 and 005
