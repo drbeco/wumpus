@@ -722,7 +722,57 @@ Headstrong: just go forward, stubborn as a mule, stiff-necked.
 
 As you could see from the images above, one option is the grid map. The other option, the dodecahedron, we will show bellow.
 
-### 4.1. The Grid Map
+### 4.1 The Figure 62 Map
+
+Using the keyword `fig62` during the setup, you will get the same map as that shown in Figure 62 of the book `Artificial Intelligence: a modern approach`, by Russel and Norvig.
+
+Example of initialization:
+
+```
+$ swipl -s agente002.pl 
+Welcome to SWI-Prolog (threaded, 64 bits, version 8.4.3)
+SWI-Prolog comes with ABSOLUTELY NO WARRANTY. This is free software.
+Please run ?- license. for legal details.
+
+For online help and background, visit https://www.swi-prolog.org
+For built-in help, use ?- help(Topic). or ?- apropos(Word).
+
+?- manual_setup([_, fig62, _, _, _, _, _]).
+true.
+
+?- manual_init.
+User defined setup: Size=4, Type=fig62, Move=stander, Gold=1, Pit=3, Bat=0, Adv=[no,no]
+
+World Setup: [4,fig62,stander,1,3,0,[no,no]]
+First Impression: [no,no,no,no,no,no,[[1,1],0]]
+-------------------------
+|     |     |     |  P  |
+-------------------------
+|W    |    G|  P  |     |
+-------------------------
+|     |     |     |     |
+-------------------------
+| A   |     |  P  |     |
+-------------------------
+wumpus_move_rule(stander)
+wumpus_health(alive)
+wumpus_orientation(90)
+wumpus_location(1,3)
+wumpus_last_action(sit)
+
+agent_health(alive)
+agent_orientation(0)
+agent_location(1,1)
+agent_arrows(1)
+agent_gold(0)
+true.
+
+?- 
+```
+
+This is a first step for a programmer to start learning the Wumpus and logic programming. Once you deal with this fixed static map, you can move on to the next challenges.
+
+### 4.2. The Grid Map
 
 The grid map option is a NxN square map, with lateral size of N caves, being:
 
@@ -774,7 +824,7 @@ true.
 ?- 
 ```
 
-### 4.2 The Dodecahedron
+### 4.3 The Dodecahedron
 
 The dodecahedron map is a connected map that resembles a 20-nodes geometric 3D figure that was flatten to the 2D surface. Different from the grid map, where each cave has 4 doors (north, south, east and west) except those on the border, in the dodecahedron map each room has exactly 3 doors, and there is no rooms with more or less than 3 doors.
 
