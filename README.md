@@ -1,6 +1,6 @@
 # Hunt The Wumpus
 
-## The Wumpus World Simulator
+## 1. The Wumpus World Simulator
 
 Edited, Compiled, Modified by:
 
@@ -30,9 +30,9 @@ to his wikipedia page:
 
 https://en.wikipedia.org/wiki/Gregory_Yob
 
-## How to start the simulation
+## 2. How to start the simulation
 
-### Let the agents play
+### 2.1. Let the agents play
 
 To start an agent, on your shell, type (for example, agent 001):
 
@@ -211,7 +211,7 @@ In this case the agent 001 was successful and returned home with a positive scor
 ?- halt.
 ```
 
-### Let's play manually
+### 2.2. Let's play manually
 
 You can play the game yourself, instead of looking to an agent. To play, you start by calling:
 
@@ -230,7 +230,7 @@ For built-in help, use ?- help(Topic). or ?- apropos(Word).
 Now enter the setup of the world you would like to play, with `manual_setup` and then `manual_init`. Say:
 
 ```
-?- manual_setup([5, grid, walker, 0.2, 0.1, 0.1, [no]]).
+?- manual_setup([5, grid, walker, 0.2, 0.1, 0.1, [no,no]]).
 true.
 
 ?- manual_init.
@@ -282,7 +282,7 @@ Now you can play using the following commands (do not forget to end the line wit
 Lets see a complete game:
 
 ```
-?- manual_setup([5, grid, walker, 0.2, 0.1, 0.1, [no]]).
+?- manual_setup([5, grid, walker, 0.2, 0.1, 0.1, [no,no]]).
 true.
 
 ?- manual_init.
@@ -673,9 +673,9 @@ $
 Phewww... The Wumpus almost got to us! But in the end, it was a complete success.
 
 
-## Agents
+## 3. Agents
 
-### Agent 001 and 005
+### 3.1. Agent 001 and 005
 
 Strategy: 
 
@@ -696,7 +696,7 @@ Note:
     - Agent 001 is for fixed start position of the agent at [1,1]
     - Agent 005 is for random agent start position
 
-### Agent 002
+### 3.2. Agent 002
 
 Strategy:
 
@@ -704,7 +704,7 @@ A prefixed list of actions fine-tuned for the fixed map _Fig 62_. The list have 
 
     - lacoes([goforward,turnleft,goforward,goforward,turnleft,shoot,grab,turnleft,goforward,goforward,turnright,goforward,climb]).
 
-### Agent 004
+### 3.3. Agent 004
 
 Strategy:
 
@@ -712,13 +712,139 @@ Try to solve the Wumpus World without any use of memory.
 
     - To avoid cicles the agent have lists tunned for each situation from where it draw a random member.
 
-### Agent 007
+### 3.4. Agent 007
 
 Strategy:
 
 Headstrong: just go forward, stubborn as a mule, stiff-necked.
 
-## References
+## 4. Maps
+
+As you could see from the images above, one option is the grid map. The other option, the dodecahedron, we will show bellow.
+
+### 4.1. The Grid Map
+
+The grid map option is a NxN square map, with lateral size of N caves, being:
+
+    - N, an integer in the range `[2, 9]`, inclusive.
+
+In the grid option, the coordinates are `[X,Y]`, where:
+    - `X` is the abscissa (horizontal), ranging from 1 (the leftmost caves) to N (the rightmost caves).
+    - `Y` is the ordinate (vertical), ranging from 1 (the bottom) to N (on the top)
+
+Example of a 2x2 cave:
+
+```
+$ swipl -s wumpus.pl 
+Welcome to SWI-Prolog (threaded, 64 bits, version 8.4.3)
+SWI-Prolog comes with ABSOLUTELY NO WARRANTY. This is free software.
+Please run ?- license. for legal details.
+
+For online help and background, visit https://www.swi-prolog.org
+For built-in help, use ?- help(Topic). or ?- apropos(Word).
+
+?- manual_setup([2, grid, walker, 0.2, 0.1, 0.1, [no,no]]).
+true.
+
+?- manual_init.
+[2,grid,walker,0.2,0.1,0.1,[no,no]]
+Reusing setup: Size=2, Type=grid, Move=walker, Gold=0.2, Pit=0.1, Bat=0.1, Adv=
+
+World Setup: [2,grid,walker,0.2,0.1,0.1,[no,no]]
+First Impression: [yes,no,no,no,no,no,[[1,1],0]]
+-------------
+|     |    G|
+-------------
+| A   |W    |
+-------------
+wumpus_move_rule(walker)
+wumpus_health(alive)
+wumpus_orientation(0)
+wumpus_location(2,1)
+wumpus_last_action(sit)
+
+agent_health(alive)
+agent_orientation(0)
+agent_location(1,1)
+agent_arrows(1)
+agent_gold(0)
+true.
+
+?- 
+```
+
+### 4.2 The Dodecahedron
+
+The dodecahedron map is a connected map that resembles a 20-nodes geometric 3D figure that was flatten to the 2D surface. Different from the grid map, where each cave has 4 doors (north, south, east and west) except those on the border, in the dodecahedron map each room has exactly 3 doors, and there is no rooms with more or less than 3 doors.
+
+You cannot understand the dodecahedron doors as being oriented as north/south/east/west. Instead, they are all in a sphere (a circle in 2D actually) that goes around. The coordinates adjust for that. Instead of `x-axis` and `y-axis`, we have:
+
+    - `N` is 20 rooms, fixed.
+    - a pair `[X, Y]` where:
+        - `X` is the cave number. Each cave has its own identifying number, from 1 to 20.
+        - `Y` is the depth, from 1 to 6. 
+
+Note:
+ 
+    - There is only one cave at depth 1, and that is the cave number 1. That means once you get to `[1,1]`, you can climb out of the cave, and this is the only cave where climb is possible.
+    - You will not get lost if you want to get out. No matter where you are, if you always follow the path that leads to a lower depth, you will eventually get to `[1,1]`
+
+That said, mapping this world is of course far more interesting and enjoyable. Make an agent to do so and happy coding.
+
+
+Example of the dodecahedron map:
+
+![Dodecahedron Map](extras/wumpus-dodecahedron-map.png)
+
+Here an example of initialization of the map:
+
+```
+$ swipl -s wumpus.pl 
+Welcome to SWI-Prolog (threaded, 64 bits, version 8.4.3)
+SWI-Prolog comes with ABSOLUTELY NO WARRANTY. This is free software.
+Please run ?- license. for legal details.
+
+For online help and background, visit https://www.swi-prolog.org
+For built-in help, use ?- help(Topic). or ?- apropos(Word).
+
+?- manual_setup([20, dodeca, walker, 0.2, 0.1, 0.1, [no,no]]).
+true.
+
+?- manual_init.
+[20,dodeca,walker,0.2,0.1,0.1,[no,no]]
+Reusing setup: Size=20, Type=dodeca, Move=walker, Gold=0.2, Pit=0.1, Bat=0.1, Adv=
+
+World Setup: [20,dodeca,walker,0.2,0.1,0.1,[no,no]]
+First Impression: [no,no,no,no,no,no,[[1,1],0]]
+-------------------
+|     |     |     |
+-------------------
+|     | A   |    G|
+-------------------
+|     |     |     |
+-------------------
+wumpus_move_rule(walker)
+wumpus_health(alive)
+wumpus_orientation(0)
+wumpus_location(3,3)
+wumpus_last_action(sit)
+
+agent_health(alive)
+agent_orientation(0)
+agent_location(1,1)
+agent_arrows(1)
+agent_gold(0)
+true.
+
+?- 
+```
+
+The grid shown is a 3x3 map centered in the Agent: that is, no matter where you move, the `A` letter will always be on the center of this small piece of map.
+
+In the example above, the agent is on `[1,1]`, that is, cave 1, depth 1. In this particular cave, there is no south door, but the map doesn't show this information. If you try to go south, you will bump in the wall.
+
+
+## 5. References
 
 * Original Wumpus version 1: http://www.atariarchives.org/bcc1/showpage.php?page=247
 * Original Wumpus version 2: http://www.atariarchives.org/bcc2/showpage.php?page=244
