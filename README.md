@@ -729,6 +729,7 @@ The grid map option is a NxN square map, with lateral size of N caves, being:
     - N, an integer in the range `[2, 9]`, inclusive.
 
 In the grid option, the coordinates are `[X,Y]`, where:
+
     - `X` is the abscissa (horizontal), ranging from 1 (the leftmost caves) to N (the rightmost caves).
     - `Y` is the ordinate (vertical), ranging from 1 (the bottom) to N (on the top)
 
